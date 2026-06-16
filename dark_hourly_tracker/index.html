@@ -45,7 +45,7 @@
         <header class="top-bar">
           <div class="header-left">
             <h2 id="mainTitle">Dashboard</h2>
-            <p id="mainSubtitle">Track your hours, overtime, call‑outs and commissions</p>
+            <p id="mainSubtitle">ServiceNow Employee Time Tracker</p>
           </div>
           <div class="header-right">
             <span class="status-indicator">● Live</span>
@@ -351,5 +351,26 @@
     </div>
     <!-- Use the built-in dark script -->
     <script src="script.js"></script>
+    <!-- Custom script to override dashboard subtitle -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        function setSubtitle() {
+          var subtitle = document.getElementById('mainSubtitle');
+          if (subtitle) {
+            subtitle.textContent = 'ServiceNow Employee Time Tracker';
+          }
+        }
+        setSubtitle();
+        var nav = document.getElementById('navList');
+        if (nav) {
+          nav.addEventListener('click', function (e) {
+            var targetLi = e.target.closest('li');
+            if (targetLi && targetLi.getAttribute('data-target') === 'dashboardSection') {
+              setSubtitle();
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
