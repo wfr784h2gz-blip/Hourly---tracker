@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hourly-tracker-dark-v2';
+const CACHE_NAME = 'hourly-tracker-dark-v3';
 const ASSETS = [
   './',
   './index.html',
