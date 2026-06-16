@@ -1,173 +1,187 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#293e40">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="SN Employees Time">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css">
-  <title>ServiceNow Employees Time</title>
-</head>
-<body>
-  <header class="hero">
-    <div class="brand-row">
-      <img class="app-icon" src="icon.svg" alt="ServiceNow Employees Time icon">
-      <div>
-        <p class="eyebrow">Proprietary software developed for Hansel</p>
-        <h1>ServiceNow Employees Time</h1>
-      </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#04132a" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Hourly Tracker – Dark Theme</title>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo-circle">HT</div>
+          <div>
+            <h1>Hourly Tracker</h1>
+            <p class="tagline">Track your time, get paid.</p>
+          </div>
+        </div>
+        <nav class="nav">
+          <ul>
+            <li class="active"><span class="icon">📊</span>Dashboard</li>
+            <li><span class="icon">🕒</span>Time Entries</li>
+            <li><span class="icon">📞</span>Call‑Out Tracker</li>
+            <li><span class="icon">📄</span>Reports</li>
+            <li><span class="icon">📅</span>Calendar</li>
+            <li><span class="icon">⚙️</span>Settings</li>
+          </ul>
+        </nav>
+        <div class="user-footer">
+          <div class="avatar">U</div>
+          <div>
+            <p class="username">User</p>
+            <p class="rate">$32/hr Standard</p>
+          </div>
+        </div>
+      </aside>
+      <!-- Main content -->
+      <main class="main">
+        <!-- Header -->
+        <header class="top-bar">
+          <div class="header-left">
+            <h2>Dashboard</h2>
+            <p>Track your hours, overtime, and call‑out pay</p>
+          </div>
+          <div class="header-right">
+            <span class="status-indicator">● Live</span>
+            <span class="current-date" id="currentDate"></span>
+          </div>
+        </header>
+
+        <!-- Grid layout for cards -->
+        <div class="grid">
+          <!-- Time tracker card -->
+          <section class="card tracker-card">
+            <h3>Time Tracker</h3>
+            <p class="subtitle">Track your work hours</p>
+            <div class="inputs">
+              <div class="time-group">
+                <label for="startTime">
+                  <span class="circle green"></span>Start Time
+                </label>
+                <input type="time" id="startTime" />
+              </div>
+              <div class="time-group">
+                <label for="endTime">
+                  <span class="circle red"></span>End Time
+                </label>
+                <input type="time" id="endTime" />
+              </div>
+            </div>
+            <div class="results">
+              <div class="total">
+                <span id="totalTime">0h 0m</span>
+              </div>
+              <div class="overtime">
+                <span id="overtime">0h 0m overtime</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="startBtn" class="btn green">Start</button>
+              <button id="stopBtn" class="btn red">Stop</button>
+            </div>
+          </section>
+          <!-- Summary card -->
+          <section class="card summary-card">
+            <h3>Today's Summary</h3>
+            <ul class="summary-list">
+              <li>
+                <span>Regular Hours (up to 8)</span>
+                <span id="regularHours" class="value blue">0h 0m</span>
+              </li>
+              <li>
+                <span>Overtime Hours</span>
+                <span id="summaryOvertime" class="value orange">0h 0m</span>
+              </li>
+              <li>
+                <span>Total Hours</span>
+                <span id="summaryTotal" class="value purple">0h 0m</span>
+              </li>
+              <li>
+                <span>Regular Pay (@ $32/hr)</span>
+                <span id="regularPay" class="value green-money">$0.00</span>
+              </li>
+              <li>
+                <span>Overtime Pay (@ $48/hr)</span>
+                <span id="overtimePay" class="value orange-money">$0.00</span>
+              </li>
+              <li class="total-row">
+                <span>Total Pay (Hours)</span>
+                <span id="totalPay" class="value total-money">$0.00</span>
+              </li>
+            </ul>
+          </section>
+          <!-- Call‑out tracker -->
+          <section class="card callout-card">
+            <h3>Call‑Out Tracker</h3>
+            <p class="subtitle">Track call‑out pay (separate from hours)</p>
+            <div class="callout-fields">
+              <div class="field">
+                <label for="calloutType">Type</label>
+                <select id="calloutType">
+                  <option value="weekday">Weekday</option>
+                  <option value="weekend">Weekend</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="calloutDate">Date</label>
+                <input type="date" id="calloutDate" />
+              </div>
+            </div>
+            <div class="callout-display">
+              <span id="calloutPayAmount" class="callout-amount">$0.00</span>
+              <span id="calloutPayDesc" class="callout-desc">Weekday Call‑Out</span>
+            </div>
+            <button id="addCalloutBtn" class="btn blue">+ Add Call‑Out</button>
+          </section>
+          <!-- Call‑out summary -->
+          <section class="card callout-summary-card">
+            <ul class="summary-list">
+              <li>
+                <span>Weekday Call‑Out</span>
+                <span id="weekdayTotal" class="value">$0.00</span>
+              </li>
+              <li>
+                <span>Weekend Call‑Out</span>
+                <span id="weekendTotal" class="value">$0.00</span>
+              </li>
+              <li class="total-row">
+                <span>Total Call‑Out Pay</span>
+                <span id="totalCallout" class="value total-money">$0.00</span>
+              </li>
+            </ul>
+          </section>
+          <!-- Recent entries -->
+          <section class="card entries-card">
+            <h3>Recent Entries</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Total</th>
+                  <th>Overtime</th>
+                  <th>Hours Pay</th>
+                  <th>Call‑Out Pay</th>
+                  <th>Total Pay</th>
+                </tr>
+              </thead>
+              <tbody id="entriesBody">
+                <!-- dynamically populated -->
+              </tbody>
+            </table>
+            <button id="viewAllBtn" class="btn transparent">View All Entries</button>
+          </section>
+        </div>
+        <footer class="footer-note">
+          Hourly Tracker • All data is saved in the cloud automatically
+        </footer>
+      </main>
     </div>
-    <div class="status-pill" id="sync-status">Device save on</div>
-  </header>
-
-  <main>
-    <section class="card live-card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Clock from leave to home</p>
-          <h2>Live shift timer</h2>
-        </div>
-        <span id="clock-state" class="mini-pill">Not running</span>
-      </div>
-
-      <div class="timer" id="live-timer">00:00:00</div>
-      <p class="muted" id="timer-note">Tap Clock In when you leave. Tap Clock Out when you get home.</p>
-
-      <label class="check-row">
-        <input type="checkbox" id="active-callout">
-        <span>Mark this shift as a call-out</span>
-      </label>
-
-      <textarea id="active-notes" rows="2" placeholder="Optional notes, job name, or location"></textarea>
-
-      <div class="button-row">
-        <button class="primary" id="clock-in-btn">Clock In Now</button>
-        <button class="danger" id="clock-out-btn">Clock Out & Save</button>
-      </div>
-    </section>
-
-    <section class="summary-grid">
-      <article class="stat-card">
-        <span>This week hours</span>
-        <strong id="week-hours">0.00</strong>
-      </article>
-      <article class="stat-card">
-        <span>Regular pay</span>
-        <strong id="week-regular-pay">$0.00</strong>
-      </article>
-      <article class="stat-card">
-        <span>Overtime pay</span>
-        <strong id="week-overtime-pay">$0.00</strong>
-      </article>
-      <article class="stat-card highlight">
-        <span>Total week pay</span>
-        <strong id="week-total-pay">$0.00</strong>
-      </article>
-    </section>
-
-    <section class="card">
-      <div class="week-bar">
-        <button id="prev-week" class="ghost">Back</button>
-        <div>
-          <p class="eyebrow">Selected week</p>
-          <h2 id="week-label">This week</h2>
-        </div>
-        <button id="next-week" class="ghost">Next</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Manual add</p>
-          <h2>Add missed time</h2>
-        </div>
-      </div>
-
-      <form id="manual-form" class="form-grid">
-        <label>Date
-          <input type="date" id="manual-date" required>
-        </label>
-        <label>Start time
-          <input type="time" id="manual-start" required>
-        </label>
-        <label>End time
-          <input type="time" id="manual-end" required>
-        </label>
-        <label>Call-out
-          <select id="manual-callout">
-            <option value="no">No call-out</option>
-            <option value="yes">Yes, add fee</option>
-          </select>
-        </label>
-        <label class="wide">Notes
-          <input type="text" id="manual-notes" placeholder="Optional notes">
-        </label>
-        <button class="primary wide" type="submit">Save Entry</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Pay rules</p>
-          <h2>Settings</h2>
-        </div>
-        <button class="ghost small" id="reset-settings">Reset</button>
-      </div>
-
-      <div class="form-grid">
-        <label>Regular hourly
-          <input type="number" id="regular-rate" step="0.01">
-        </label>
-        <label>Overtime hourly
-          <input type="number" id="overtime-rate" step="0.01">
-        </label>
-        <label>Weekly regular limit
-          <input type="number" id="weekly-limit" step="0.25">
-        </label>
-        <label>Weekday call-out fee
-          <input type="number" id="weekday-fee" step="0.01">
-        </label>
-        <label>Weekend call-out fee
-          <input type="number" id="weekend-fee" step="0.01">
-        </label>
-        <button class="primary" id="save-settings">Save Settings</button>
-      </div>
-      <p class="muted">Default rules: $32 regular, $48 overtime, $25 weekday call-out, $50 weekend call-out.</p>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Saved records</p>
-          <h2>Entries</h2>
-        </div>
-        <button class="ghost small" id="export-json">Export</button>
-      </div>
-      <div id="entries-list" class="entries-list"></div>
-    </section>
-  </main>
-
-  <template id="entry-template">
-    <article class="entry-card">
-      <div>
-        <strong class="entry-date"></strong>
-        <p class="entry-time muted"></p>
-        <p class="entry-notes muted"></p>
-      </div>
-      <div class="entry-pay"></div>
-      <button class="delete-entry" type="button">Delete</button>
-    </article>
-  </template>
-
-  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"></script>
-  <script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
