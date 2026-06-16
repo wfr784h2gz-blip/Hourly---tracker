@@ -1,12 +1,12 @@
 {
-  "name": "Hourly Tracker",
-  "short_name": "Hourly",
+  "name": "ServiceNow Employee Time Tracker",
+  "short_name": "SN Tracker",
   "description": "Track work hours, overtime pay, and call-out fees from your phone.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#061b1b",
-  "theme_color": "#0f766e",
+  "background_color": "#293e40",
+  "theme_color": "#293e40",
   "icons": [
     {
       "src": "icon.svg",
