@@ -1,410 +1,674 @@
-const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
-};
+// Helper to format duration into hours and minutes
+function formatDuration(ms) {
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
 
-const DEFAULT_SETTINGS = {
+// Parse a time string (HH:MM) into milliseconds
+function parseTimeToMs(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  return ((h * 60) + m) * 60000;
+}
+
+// Store entries, call-out totals, commissions and settings
+let entries = [];
+let weekdayCalloutTotal = 0;
+let weekendCalloutTotal = 0;
+let commissionsTotal = 0;
+let settings = {
   regularRate: 32,
   overtimeRate: 48,
-  weeklyLimit: 40,
-  weekdayCalloutFee: 25,
-  weekendCalloutFee: 50
+  weekdayCalloutRate: 25,
+  weekendCalloutRate: 50
 };
 
-const STORAGE_KEYS = {
-  entries: "hourlyTracker.entries",
-  settings: "hourlyTracker.settings",
-  active: "hourlyTracker.activeShift",
-  user: "hourlyTracker.userId"
-};
+// Persist state to and from localStorage
+function loadData() {
+  try {
+    const saved = localStorage.getItem('hourlyTrackerData');
+    if (saved) {
+      const data = JSON.parse(saved);
+      entries = data.entries || [];
+      weekdayCalloutTotal = data.weekdayCalloutTotal || 0;
+      weekendCalloutTotal = data.weekendCalloutTotal || 0;
+      commissionsTotal = data.commissionsTotal || 0;
+      settings = Object.assign(settings, data.settings || {});
+    }
+  } catch (e) {
+    console.error('Failed to load data', e);
+  }
+}
 
-let entries = [];
-let settings = loadSettings();
-let currentWeekStart = getWeekStart(new Date());
-let db = null;
-let cloudReady = false;
-let unsubscribe = null;
-let timerHandle = null;
+function saveData() {
+  try {
+    localStorage.setItem('hourlyTrackerData', JSON.stringify({
+      entries,
+      weekdayCalloutTotal,
+      weekendCalloutTotal,
+      commissionsTotal,
+      settings
+    }));
+  } catch (e) {
+    console.error('Failed to save data', e);
+  }
+}
 
-const $ = (id) => document.getElementById(id);
+// Grab DOM elements
+const startTimeInput = document.getElementById('startTime');
+const endTimeInput = document.getElementById('endTime');
+const totalTimeDisplay = document.getElementById('totalTime');
+const overtimeDisplay = document.getElementById('overtime');
+const regularHoursDisplay = document.getElementById('regularHours');
+const summaryOvertimeDisplay = document.getElementById('summaryOvertime');
+const summaryTotalDisplay = document.getElementById('summaryTotal');
+const regularPayDisplay = document.getElementById('regularPay');
+const overtimePayDisplay = document.getElementById('overtimePay');
+const totalPayDisplay = document.getElementById('totalPay');
+const calloutTypeSelect = document.getElementById('calloutType');
+const calloutDateInput = document.getElementById('calloutDate');
+const calloutPayAmount = document.getElementById('calloutPayAmount');
+const calloutPayDesc = document.getElementById('calloutPayDesc');
+const weekdayTotalDisplay = document.getElementById('weekdayTotal');
+const weekendTotalDisplay = document.getElementById('weekendTotal');
+const totalCalloutDisplay = document.getElementById('totalCallout');
+const entriesBody = document.getElementById('entriesBody');
 
-window.addEventListener("DOMContentLoaded", () => {
-  setDefaultDates();
-  fillSettingsForm();
-  bindEvents();
-  registerServiceWorker();
-  initCloudIfConfigured();
-  loadEntries();
-  startTimerLoop();
+// Additional DOM elements
+const commissionPayDisplay = document.getElementById('commissionPay');
+const commissionTotalDisplay = document.getElementById('commissionTotal');
+const commissionTotalDisplay2 = document.getElementById('commissionTotal2');
+const commissionAmountInput = document.getElementById('commissionAmount');
+const commissionDateInput = document.getElementById('commissionDate');
+const commissionAmountInputClone = document.getElementById('commissionAmountClone');
+const commissionDateInputClone = document.getElementById('commissionDateClone');
+const calloutTypeClone = document.getElementById('calloutTypeClone');
+const calloutDateClone = document.getElementById('calloutDateClone');
+const calloutPayAmountClone = document.getElementById('calloutPayAmountClone');
+const calloutPayDescClone = document.getElementById('calloutPayDescClone');
+const allEntriesBody = document.getElementById('allEntriesBody');
+const reportChartCanvas = document.getElementById('reportChart');
+const reportStartDate = document.getElementById('reportStartDate');
+const reportEndDate = document.getElementById('reportEndDate');
+const reportSummary = document.getElementById('reportSummary');
+const regularRateInput = document.getElementById('regularRate');
+const overtimeRateInput = document.getElementById('overtimeRate');
+const weekdayCalloutRateInput = document.getElementById('weekdayCalloutRate');
+const weekendCalloutRateInput = document.getElementById('weekendCalloutRate');
+// Chart instance variable
+let reportChart;
+
+// Update the header date
+function updateCurrentDate() {
+  const now = new Date();
+  const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+  document.getElementById('currentDate').textContent = now.toLocaleDateString(undefined, options);
+}
+updateCurrentDate();
+
+// Load persisted data
+loadData();
+// Apply settings to rate inputs when available
+function populateSettings() {
+  if (regularRateInput) regularRateInput.value = settings.regularRate;
+  if (overtimeRateInput) overtimeRateInput.value = settings.overtimeRate;
+  if (weekdayCalloutRateInput) weekdayCalloutRateInput.value = settings.weekdayCalloutRate;
+  if (weekendCalloutRateInput) weekendCalloutRateInput.value = settings.weekendCalloutRate;
+}
+// Populate settings if section exists
+populateSettings();
+
+// Initial UI updates for stored totals and entries
+updateCalloutSummary();
+updateSummaryForToday();
+renderEntries();
+
+
+// Handle the start button: record the current time into the start field
+document.getElementById('startBtn').addEventListener('click', () => {
+  const now = new Date();
+  startTimeInput.value = now.toTimeString().slice(0, 5);
 });
 
-function bindEvents() {
-  $("clock-in-btn").addEventListener("click", clockInNow);
-  $("clock-out-btn").addEventListener("click", clockOutAndSave);
-  $("active-callout").addEventListener("change", saveActiveExtras);
-  $("active-notes").addEventListener("input", saveActiveExtras);
-  $("manual-form").addEventListener("submit", addManualEntry);
-  $("prev-week").addEventListener("click", () => changeWeek(-1));
-  $("next-week").addEventListener("click", () => changeWeek(1));
-  $("save-settings").addEventListener("click", saveSettingsFromForm);
-  $("reset-settings").addEventListener("click", resetSettings);
-  $("export-json").addEventListener("click", exportBackup);
-}
+// Handle the stop button: record the current time into the end field and compute totals
+document.getElementById('stopBtn').addEventListener('click', () => {
+  const now = new Date();
+  endTimeInput.value = now.toTimeString().slice(0, 5);
+  updateTimeCalculation();
+});
 
-function registerServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js").catch(console.warn);
+function updateTimeCalculation() {
+  const start = startTimeInput.value;
+  const end = endTimeInput.value;
+  if (!start || !end) return;
+  let startMs = parseTimeToMs(start);
+  let endMs = parseTimeToMs(end);
+  let durationMs = endMs - startMs;
+  if (durationMs < 0) {
+    // handle overnight shifts
+    durationMs += 24 * 3600000;
   }
+  const overtimeMs = Math.max(0, durationMs - 8 * 3600000);
+  const regularMs = durationMs - overtimeMs;
+  // Display results
+  totalTimeDisplay.textContent = formatDuration(durationMs);
+  overtimeDisplay.textContent = formatDuration(overtimeMs) + (overtimeMs > 0 ? ' overtime' : '');
+  regularHoursDisplay.textContent = formatDuration(regularMs);
+  summaryOvertimeDisplay.textContent = formatDuration(overtimeMs);
+  summaryTotalDisplay.textContent = formatDuration(durationMs);
+  const regularPay = (regularMs / 3600000) * 32;
+  const overtimePay = (overtimeMs / 3600000) * settings.overtimeRate;
+  const regPay = (regularMs / 3600000) * settings.regularRate;
+  regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
+  overtimePayDisplay.textContent = `$${overtimePay.toFixed(2)}`;
+  // Total pay currently only includes hours pay; call-out and commission added later
+  totalPayDisplay.textContent = `$${(regPay + overtimePay).toFixed(2)}`;
+  // Create an entry object and add to entries array
+  const entry = {
+    date: new Date().toLocaleDateString(),
+    startTime: start,
+    endTime: end,
+    durationMs,
+    overtimeMs,
+    hoursPay: regPay + overtimePay,
+    calloutPay: 0,
+    commission: 0,
+    totalPay: regPay + overtimePay
+  };
+  entries.push(entry);
+  saveData();
+  renderEntries();
+  updateSummaryForToday();
 }
 
-function initCloudIfConfigured() {
-  const configured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "REPLACE_ME";
-  if (!configured || !window.firebase) {
-    updateSyncStatus("Device save on");
-    return;
-  }
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    cloudReady = true;
-    updateSyncStatus("Cloud sync on");
-  } catch (error) {
-    console.error(error);
-    updateSyncStatus("Device save on");
-  }
+// Render the latest entries in the table (showing up to 5 most recent)
+function renderEntries() {
+  entriesBody.innerHTML = '';
+  const recent = entries.slice(-5).reverse();
+  recent.forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${entry.date}</td>
+      <td>${entry.startTime}</td>
+      <td>${entry.endTime}</td>
+      <td>${formatDuration(entry.durationMs)}</td>
+      <td>${formatDuration(entry.overtimeMs)}</td>
+      <td>$${entry.hoursPay.toFixed(2)}</td>
+      <td>$${entry.calloutPay.toFixed(2)}</td>
+      <td>$${entry.commission.toFixed(2)}</td>
+      <td>$${entry.totalPay.toFixed(2)}</td>
+    `;
+    entriesBody.appendChild(tr);
+  });
+  renderAllEntries();
 }
 
-function updateSyncStatus(text) {
-  $("sync-status").textContent = text;
-}
-
-function getUserId() {
-  let userId = localStorage.getItem(STORAGE_KEYS.user);
-  if (!userId) {
-    userId = `user_${crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
-    localStorage.setItem(STORAGE_KEYS.user, userId);
-  }
-  return userId;
-}
-
-function loadEntries() {
-  const cached = localStorage.getItem(STORAGE_KEYS.entries);
-  entries = cached ? JSON.parse(cached) : [];
-  render();
-
-  if (!cloudReady) return;
-
-  const userId = getUserId();
-  unsubscribe = db.collection("users").doc(userId).collection("entries").orderBy("startISO").onSnapshot(snapshot => {
-    entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(entries));
-    render();
-  }, error => {
-    console.error(error);
-    updateSyncStatus("Device save on");
+// Render all entries in the Time Entries section
+function renderAllEntries() {
+  if (!allEntriesBody) return;
+  allEntriesBody.innerHTML = '';
+  // Sort by date ascending
+  const sorted = [...entries];
+  sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+  sorted.forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${entry.date}</td>
+      <td>${entry.startTime}</td>
+      <td>${entry.endTime}</td>
+      <td>${formatDuration(entry.durationMs)}</td>
+      <td>${formatDuration(entry.overtimeMs)}</td>
+      <td>$${entry.hoursPay.toFixed(2)}</td>
+      <td>$${entry.calloutPay.toFixed(2)}</td>
+      <td>$${entry.commission.toFixed(2)}</td>
+      <td>$${entry.totalPay.toFixed(2)}</td>
+    `;
+    allEntriesBody.appendChild(tr);
   });
 }
 
-async function persistEntry(entry) {
-  entries = upsert(entries, entry);
-  localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(entries));
-  render();
+// Update callout preview when the type changes
+function updateCalloutPreview() {
+  const type = calloutTypeSelect.value;
+  const amount = type === 'weekday' ? 25 : 50;
+  calloutPayAmount.textContent = `$${amount.toFixed(2)}`;
+  calloutPayDesc.textContent = type === 'weekday' ? 'Weekday Call‑Out' : 'Weekend Call‑Out';
+}
+calloutTypeSelect.addEventListener('change', updateCalloutPreview);
+updateCalloutPreview();
 
-  if (cloudReady) {
-    const userId = getUserId();
-    await db.collection("users").doc(userId).collection("entries").doc(entry.id).set(entry);
+// Update callout preview for clone section
+function updateCalloutPreviewClone() {
+  if (!calloutTypeClone) return;
+  const type = calloutTypeClone.value;
+  const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
+  calloutPayAmountClone.textContent = `$${amount.toFixed(2)}`;
+  calloutPayDescClone.textContent = type === 'weekday' ? 'Weekday Call‑Out' : 'Weekend Call‑Out';
+}
+if (calloutTypeClone) {
+  calloutTypeClone.addEventListener('change', updateCalloutPreviewClone);
+  updateCalloutPreviewClone();
+}
+
+// Handle adding a call-out to the latest entry or as standalone
+document.getElementById('addCalloutBtn').addEventListener('click', () => {
+  const type = calloutTypeSelect.value;
+  const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
+  // accumulate totals
+  if (type === 'weekday') {
+    weekdayCalloutTotal += amount;
+  } else {
+    weekendCalloutTotal += amount;
   }
-}
-
-async function deleteEntry(id) {
-  entries = entries.filter(entry => entry.id !== id);
-  localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(entries));
-  render();
-
-  if (cloudReady) {
-    const userId = getUserId();
-    await db.collection("users").doc(userId).collection("entries").doc(id).delete();
+  updateCalloutSummary();
+  // Apply to last entry if exists; else create new entry
+  let entry;
+  if (entries.length > 0) {
+    entry = entries[entries.length - 1];
+    entry.calloutPay += amount;
+    entry.totalPay += amount;
+  } else {
+    entry = {
+      date: new Date().toLocaleDateString(),
+      startTime: '--',
+      endTime: '--',
+      durationMs: 0,
+      overtimeMs: 0,
+      hoursPay: 0,
+      calloutPay: amount,
+      commission: 0,
+      totalPay: amount
+    };
+    entries.push(entry);
   }
-}
+  saveData();
+  renderEntries();
+  updateSummaryForToday();
+});
 
-function upsert(list, item) {
-  const next = list.filter(entry => entry.id !== item.id);
-  next.push(item);
-  return next;
-}
-
-function clockInNow() {
-  if (getActiveShift()) {
-    alert("A shift is already running. Clock out first.");
-    return;
+function updateCalloutSummary() {
+  // Update first set
+  weekdayTotalDisplay.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
+  weekendTotalDisplay.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
+  const totalCall = weekdayCalloutTotal + weekendCalloutTotal + commissionsTotal;
+  totalCalloutDisplay.textContent = `$${totalCall.toFixed(2)}`;
+  // Update second set if exists
+  if (typeof weekdayTotal2 !== 'undefined') {
+    const wd2 = document.getElementById('weekdayTotal2');
+    const we2 = document.getElementById('weekendTotal2');
+    const tot2 = document.getElementById('totalCallout2');
+    if (wd2) wd2.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
+    if (we2) we2.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
+    if (tot2) tot2.textContent = `$${totalCall.toFixed(2)}`;
   }
-  const active = {
-    startISO: new Date().toISOString(),
-    callout: $("active-callout").checked,
-    notes: $("active-notes").value.trim()
-  };
-  localStorage.setItem(STORAGE_KEYS.active, JSON.stringify(active));
-  renderActiveShift();
+  updateCommissionSummary();
+  saveData();
 }
 
-async function clockOutAndSave() {
-  const active = getActiveShift();
-  if (!active) {
-    alert("No running shift to clock out.");
-    return;
-  }
-  saveActiveExtras();
-  const updated = getActiveShift();
-  const start = new Date(updated.startISO);
-  const end = new Date();
-  if (end <= start) {
-    alert("End time must be after start time.");
-    return;
-  }
-  const entry = buildEntry(start, end, updated.callout, updated.notes);
-  localStorage.removeItem(STORAGE_KEYS.active);
-  $("active-callout").checked = false;
-  $("active-notes").value = "";
-  await persistEntry(entry);
-  renderActiveShift();
+function updateCommissionSummary() {
+  if (commissionTotalDisplay) commissionTotalDisplay.textContent = `$${commissionsTotal.toFixed(2)}`;
+  if (commissionTotalDisplay2) commissionTotalDisplay2.textContent = `$${commissionsTotal.toFixed(2)}`;
 }
 
-function saveActiveExtras() {
-  const active = getActiveShift();
-  if (!active) return;
-  active.callout = $("active-callout").checked;
-  active.notes = $("active-notes").value.trim();
-  localStorage.setItem(STORAGE_KEYS.active, JSON.stringify(active));
+// Update summary card for today's totals
+function updateSummaryForToday() {
+  const today = new Date().toLocaleDateString();
+  let totalDuration = 0;
+  let totalOvertime = 0;
+  let totalCallout = 0;
+  let totalCommission = 0;
+  entries.forEach(entry => {
+    if (entry.date === today) {
+      totalDuration += entry.durationMs;
+      totalOvertime += entry.overtimeMs;
+      totalCallout += entry.calloutPay;
+      totalCommission += entry.commission;
+    }
+  });
+  const regularMs = Math.max(0, totalDuration - totalOvertime);
+  regularHoursDisplay.textContent = formatDuration(regularMs);
+  summaryOvertimeDisplay.textContent = formatDuration(totalOvertime);
+  summaryTotalDisplay.textContent = formatDuration(totalDuration);
+  const regPay = (regularMs / 3600000) * settings.regularRate;
+  const overPay = (totalOvertime / 3600000) * settings.overtimeRate;
+  regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
+  overtimePayDisplay.textContent = `$${overPay.toFixed(2)}`;
+  commissionPayDisplay.textContent = `$${totalCommission.toFixed(2)}`;
+  const totalPay = regPay + overPay + totalCallout + totalCommission;
+  totalPayDisplay.textContent = `$${totalPay.toFixed(2)}`;
+  saveData();
 }
 
-function getActiveShift() {
-  const raw = localStorage.getItem(STORAGE_KEYS.active);
-  return raw ? JSON.parse(raw) : null;
-}
-
-async function addManualEntry(event) {
-  event.preventDefault();
-  const date = $("manual-date").value;
-  const startTime = $("manual-start").value;
-  const endTime = $("manual-end").value;
-  const notes = $("manual-notes").value.trim();
-  const callout = $("manual-callout").value === "yes";
-
-  const start = new Date(`${date}T${startTime}`);
-  let end = new Date(`${date}T${endTime}`);
-  if (end <= start) end.setDate(end.getDate() + 1);
-
-  await persistEntry(buildEntry(start, end, callout, notes));
-  event.target.reset();
-  setDefaultDates();
-}
-
-function buildEntry(start, end, callout, notes) {
-  const hours = round2((end - start) / 36e5);
-  const startISO = start.toISOString();
-  return {
-    id: `entry_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    date: toDateInput(start),
-    startISO,
-    endISO: end.toISOString(),
-    startTime: toTimeInput(start),
-    endTime: toTimeInput(end),
-    hours,
-    callout,
-    calloutFee: callout ? calloutFeeForDate(start) : 0,
-    notes,
-    createdAt: new Date().toISOString()
-  };
-}
-
-function calloutFeeForDate(date) {
-  const day = date.getDay();
-  return day === 0 || day === 6 ? Number(settings.weekendCalloutFee) : Number(settings.weekdayCalloutFee);
-}
-
-function hydrateWeekEntries() {
-  const weekEntries = entries
-    .filter(entry => getWeekStart(new Date(entry.startISO)).getTime() === currentWeekStart.getTime())
-    .sort((a, b) => new Date(a.startISO) - new Date(b.startISO));
-
-  let usedRegular = 0;
-  return weekEntries.map(entry => {
-    const regularHours = Math.max(0, Math.min(entry.hours, settings.weeklyLimit - usedRegular));
-    const overtimeHours = Math.max(0, entry.hours - regularHours);
-    usedRegular += regularHours;
-    const regularPay = round2(regularHours * settings.regularRate);
-    const overtimePay = round2(overtimeHours * settings.overtimeRate);
-    const calloutFee = entry.callout ? Number(entry.calloutFee || calloutFeeForDate(new Date(entry.startISO))) : 0;
-    const totalPay = round2(regularPay + overtimePay + calloutFee);
-    return { ...entry, regularHours, overtimeHours, regularPay, overtimePay, calloutFee, totalPay };
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(err => console.error(err));
   });
 }
 
-function render() {
-  renderWeekLabel();
-  renderActiveShift();
-  renderSummaryAndEntries();
+// Commission handling
+function addCommission(amount, date) {
+  const amt = parseFloat(amount);
+  if (isNaN(amt) || amt <= 0) return;
+  commissionsTotal += amt;
+  // Assign to last entry if exists on same date; else create new entry
+  let entry;
+  const entryDate = date || new Date().toLocaleDateString();
+  // find last entry with same date
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].date === entryDate) {
+      entry = entries[i];
+      break;
+    }
+  }
+  if (entry) {
+    entry.commission += amt;
+    entry.totalPay += amt;
+  } else {
+    entry = {
+      date: entryDate,
+      startTime: '--',
+      endTime: '--',
+      durationMs: 0,
+      overtimeMs: 0,
+      hoursPay: 0,
+      calloutPay: 0,
+      commission: amt,
+      totalPay: amt
+    };
+    entries.push(entry);
+  }
+  updateCommissionSummary();
+  updateCalloutSummary();
+  renderEntries();
+  updateSummaryForToday();
+  saveData();
 }
 
-function renderActiveShift() {
-  const active = getActiveShift();
-  if (!active) {
-    $("clock-state").textContent = "Not running";
-    $("timer-note").textContent = "Tap Clock In when you leave. Tap Clock Out when you get home.";
-    $("live-timer").textContent = "00:00:00";
-    return;
-  }
-  const start = new Date(active.startISO);
-  const ms = Date.now() - start.getTime();
-  $("clock-state").textContent = "Running";
-  $("timer-note").textContent = `Started ${formatDateTime(start)}`;
-  $("live-timer").textContent = formatDuration(ms);
-  $("active-callout").checked = Boolean(active.callout);
-  $("active-notes").value = active.notes || "";
+// Event listeners for commission buttons
+if (document.getElementById('addCommissionBtn')) {
+  document.getElementById('addCommissionBtn').addEventListener('click', () => {
+    const amount = commissionAmountInput.value;
+    const date = commissionDateInput.value ? new Date(commissionDateInput.value).toLocaleDateString() : undefined;
+    addCommission(amount, date);
+    commissionAmountInput.value = '';
+    commissionDateInput.value = '';
+  });
 }
-
-function renderSummaryAndEntries() {
-  const hydrated = hydrateWeekEntries();
-  const totals = hydrated.reduce((sum, entry) => {
-    sum.hours += entry.hours;
-    sum.regularPay += entry.regularPay;
-    sum.overtimePay += entry.overtimePay;
-    sum.totalPay += entry.totalPay;
-    return sum;
-  }, { hours: 0, regularPay: 0, overtimePay: 0, totalPay: 0 });
-
-  $("week-hours").textContent = totals.hours.toFixed(2);
-  $("week-regular-pay").textContent = money(totals.regularPay);
-  $("week-overtime-pay").textContent = money(totals.overtimePay);
-  $("week-total-pay").textContent = money(totals.totalPay);
-
-  const list = $("entries-list");
-  list.innerHTML = "";
-  if (!hydrated.length) {
-    list.innerHTML = '<div class="empty-state">No entries saved for this week yet.</div>';
-    return;
-  }
-
-  const template = $("entry-template");
-  hydrated.slice().reverse().forEach(entry => {
-    const node = template.content.cloneNode(true);
-    node.querySelector(".entry-date").textContent = formatDate(new Date(entry.startISO));
-    node.querySelector(".entry-time").textContent = `${entry.startTime} – ${entry.endTime} • ${entry.hours.toFixed(2)} hrs`;
-    node.querySelector(".entry-notes").textContent = entry.notes || (entry.callout ? "Call-out added" : "Regular shift");
-    node.querySelector(".entry-pay").innerHTML = `${money(entry.totalPay)}<small>${entry.regularHours.toFixed(2)} reg / ${entry.overtimeHours.toFixed(2)} OT / ${money(entry.calloutFee)} call</small>`;
-    node.querySelector(".delete-entry").addEventListener("click", () => deleteEntry(entry.id));
-    list.appendChild(node);
+if (document.getElementById('addCommissionBtnClone')) {
+  document.getElementById('addCommissionBtnClone').addEventListener('click', () => {
+    const amount = commissionAmountInputClone.value;
+    const date = commissionDateInputClone.value ? new Date(commissionDateInputClone.value).toLocaleDateString() : undefined;
+    addCommission(amount, date);
+    commissionAmountInputClone.value = '';
+    commissionDateInputClone.value = '';
   });
 }
 
-function startTimerLoop() {
-  clearInterval(timerHandle);
-  timerHandle = setInterval(renderActiveShift, 1000);
+// Event listeners for callout clone
+if (document.getElementById('addCalloutBtnClone')) {
+  document.getElementById('addCalloutBtnClone').addEventListener('click', () => {
+    const type = calloutTypeClone.value;
+    const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
+    if (type === 'weekday') {
+      weekdayCalloutTotal += amount;
+    } else {
+      weekendCalloutTotal += amount;
+    }
+    updateCalloutSummary();
+    // Add to last entry or new entry with date from clone field
+    const dateStr = calloutDateClone.value ? new Date(calloutDateClone.value).toLocaleDateString() : new Date().toLocaleDateString();
+    let entry;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].date === dateStr) {
+        entry = entries[i];
+        break;
+      }
+    }
+    if (entry) {
+      entry.calloutPay += amount;
+      entry.totalPay += amount;
+    } else {
+      entry = {
+        date: dateStr,
+        startTime: '--',
+        endTime: '--',
+        durationMs: 0,
+        overtimeMs: 0,
+        hoursPay: 0,
+        calloutPay: amount,
+        commission: 0,
+        totalPay: amount
+      };
+      entries.push(entry);
+    }
+    renderEntries();
+    updateSummaryForToday();
+    saveData();
+  });
 }
 
-function changeWeek(offset) {
-  currentWeekStart.setDate(currentWeekStart.getDate() + offset * 7);
-  render();
+// Navigation handling
+const navItems = document.querySelectorAll('.nav li');
+const sections = document.querySelectorAll('.section');
+function showSection(id) {
+  sections.forEach(sec => {
+    sec.style.display = 'none';
+    sec.classList.remove('active');
+  });
+  const target = document.getElementById(id);
+  if (target) {
+    target.style.display = 'block';
+    target.classList.add('active');
+  }
+  // Update header title and subtitle
+  const title = document.getElementById('mainTitle');
+  const subtitle = document.getElementById('mainSubtitle');
+  switch (id) {
+    case 'dashboardSection':
+      title.textContent = 'Dashboard';
+      subtitle.textContent = 'Track your hours, overtime, call‑outs and commissions';
+      break;
+    case 'timeEntriesSection':
+      title.textContent = 'Time Entries';
+      subtitle.textContent = 'View all your recorded entries';
+      break;
+    case 'calloutSection':
+      title.textContent = 'Call‑Out & Commission';
+      subtitle.textContent = 'Manage your call‑outs and commissions';
+      break;
+    case 'reportsSection':
+      title.textContent = 'Reports & Analytics';
+      subtitle.textContent = 'Generate pay reports and charts';
+      break;
+    case 'calendarSection':
+      title.textContent = 'Calendar';
+      subtitle.textContent = 'View your schedule';
+      break;
+    case 'settingsSection':
+      title.textContent = 'Settings';
+      subtitle.textContent = 'Customize your rates';
+      populateSettings();
+      break;
+    default:
+      title.textContent = '';
+      subtitle.textContent = '';
+  }
+  // Special actions per section
+  if (id === 'timeEntriesSection') {
+    renderAllEntries();
+  }
+}
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    navItems.forEach(li => li.classList.remove('active'));
+    item.classList.add('active');
+    const target = item.getAttribute('data-target');
+    showSection(target);
+  });
+});
+
+// Report generation
+if (document.getElementById('generateReportBtn')) {
+  document.getElementById('generateReportBtn').addEventListener('click', generateReport);
 }
 
-function renderWeekLabel() {
-  const end = new Date(currentWeekStart);
-  end.setDate(end.getDate() + 6);
-  $("week-label").textContent = `${formatShortDate(currentWeekStart)} – ${formatShortDate(end)}`;
+// Helper to compute a grouping key based on selected grouping
+function getGroupKey(dateObj, group) {
+  switch (group) {
+    case 'week': {
+      // start of week (Sunday)
+      const d = new Date(dateObj);
+      const day = d.getDay();
+      const diff = d.getDate() - day; // adjust to Sunday
+      const weekStart = new Date(d);
+      weekStart.setDate(diff);
+      return weekStart.toLocaleDateString();
+    }
+    case 'month':
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    case 'year':
+      return String(dateObj.getFullYear());
+    default:
+      return dateObj.toLocaleDateString();
+  }
 }
 
-function loadSettings() {
-  const raw = localStorage.getItem(STORAGE_KEYS.settings);
-  return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_SETTINGS };
+function generateReport() {
+  const startVal = reportStartDate.value;
+  const endVal = reportEndDate.value;
+  if (!startVal || !endVal) {
+    alert('Please select a start and end date');
+    return;
+  }
+  const start = new Date(startVal);
+  const end = new Date(endVal);
+  if (end < start) {
+    alert('End date must be after start date');
+    return;
+  }
+  const groupSelect = document.getElementById('reportGroup');
+  const groupBy = groupSelect ? groupSelect.value : 'day';
+  // Prepare data structures
+  const labels = [];
+  const hoursPays = [];
+  const calloutPays = [];
+  const commissionPays = [];
+  let totalHoursPay = 0;
+  let totalCallPay = 0;
+  let totalCommPay = 0;
+  // Create a map from grouping key to aggregated amounts
+  const map = {};
+  entries.forEach(entry => {
+    const dateObj = new Date(entry.date);
+    // Only include entries within the date range
+    if (dateObj >= start && dateObj <= end) {
+      const key = getGroupKey(dateObj, groupBy);
+      if (!map[key]) {
+        map[key] = { hours: 0, call: 0, comm: 0 };
+      }
+      map[key].hours += entry.hoursPay;
+      map[key].call += entry.calloutPay;
+      map[key].comm += entry.commission;
+    }
+  });
+  // Sort keys chronologically
+  Object.keys(map)
+    .sort((a, b) => {
+      // convert keys to date for sorting; for month/year convert to first day of month/year
+      const parseKey = (key) => {
+        if (groupBy === 'month') {
+          const [year, month] = key.split('-').map(Number);
+          return new Date(year, month - 1, 1);
+        }
+        if (groupBy === 'year') {
+          return new Date(Number(key), 0, 1);
+        }
+        // day and week groupings parse normally
+        return new Date(key);
+      };
+      return parseKey(a) - parseKey(b);
+    })
+    .forEach(dateKey => {
+      labels.push(dateKey);
+      hoursPays.push(map[dateKey].hours);
+      calloutPays.push(map[dateKey].call);
+      commissionPays.push(map[dateKey].comm);
+      totalHoursPay += map[dateKey].hours;
+      totalCallPay += map[dateKey].call;
+      totalCommPay += map[dateKey].comm;
+    });
+  // Destroy existing chart
+  if (reportChart) {
+    reportChart.destroy();
+  }
+  reportChart = new Chart(reportChartCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Hours Pay',
+          data: hoursPays,
+          backgroundColor: 'rgba(31, 119, 212, 0.6)',
+          borderColor: 'rgba(31, 119, 212, 1)',
+          borderWidth: 1
+        },
+        {
+          label: 'Call‑Out Pay',
+          data: calloutPays,
+          backgroundColor: 'rgba(233, 138, 21, 0.6)',
+          borderColor: 'rgba(233, 138, 21, 1)',
+          borderWidth: 1
+        },
+        {
+          label: 'Commission',
+          data: commissionPays,
+          backgroundColor: 'rgba(132, 94, 247, 0.6)',
+          borderColor: 'rgba(132, 94, 247, 1)',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: '#e6f1ff' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          stacked: true,
+          ticks: { color: '#e6f1ff' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: '#e6f1ff' }
+        }
+      }
+    }
+  });
+  // Update summary text
+  reportSummary.innerHTML = `
+    <p><strong>Total Hours Pay:</strong> $${totalHoursPay.toFixed(2)}</p>
+    <p><strong>Total Call‑Out Pay:</strong> $${totalCallPay.toFixed(2)}</p>
+    <p><strong>Total Commission:</strong> $${totalCommPay.toFixed(2)}</p>
+    <p><strong>Grand Total:</strong> $${(totalHoursPay + totalCallPay + totalCommPay).toFixed(2)}</p>
+  `;
 }
 
-function fillSettingsForm() {
-  $("regular-rate").value = settings.regularRate;
-  $("overtime-rate").value = settings.overtimeRate;
-  $("weekly-limit").value = settings.weeklyLimit;
-  $("weekday-fee").value = settings.weekdayCalloutFee;
-  $("weekend-fee").value = settings.weekendCalloutFee;
-}
-
-function saveSettingsFromForm(event) {
-  event.preventDefault();
-  settings = {
-    regularRate: Number($("regular-rate").value || DEFAULT_SETTINGS.regularRate),
-    overtimeRate: Number($("overtime-rate").value || DEFAULT_SETTINGS.overtimeRate),
-    weeklyLimit: Number($("weekly-limit").value || DEFAULT_SETTINGS.weeklyLimit),
-    weekdayCalloutFee: Number($("weekday-fee").value || DEFAULT_SETTINGS.weekdayCalloutFee),
-    weekendCalloutFee: Number($("weekend-fee").value || DEFAULT_SETTINGS.weekendCalloutFee)
-  };
-  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
-  render();
-}
-
-function resetSettings(event) {
-  event.preventDefault();
-  settings = { ...DEFAULT_SETTINGS };
-  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
-  fillSettingsForm();
-  render();
-}
-
-function exportBackup() {
-  const backup = JSON.stringify({ entries, settings, exportedAt: new Date().toISOString() }, null, 2);
-  const blob = new Blob([backup], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `hourly-tracker-backup-${toDateInput(new Date())}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function setDefaultDates() {
-  $("manual-date").value = toDateInput(new Date());
-}
-
-function getWeekStart(date) {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  d.setDate(d.getDate() - d.getDay());
-  return d;
-}
-
-function toDateInput(date) {
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
-}
-
-function toTimeInput(date) {
-  return date.toTimeString().slice(0, 5);
-}
-
-function formatDuration(ms) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${hours}:${minutes}:${seconds}`;
-}
-
-function formatDate(date) {
-  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-}
-
-function formatShortDate(date) {
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatDateTime(date) {
-  return `${formatDate(date)} at ${date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
-}
-
-function money(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
-}
-
-function round2(value) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+// Settings save handler
+if (document.getElementById('saveSettingsBtn')) {
+  document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+    settings.regularRate = parseFloat(regularRateInput.value) || settings.regularRate;
+    settings.overtimeRate = parseFloat(overtimeRateInput.value) || settings.overtimeRate;
+    settings.weekdayCalloutRate = parseFloat(weekdayCalloutRateInput.value) || settings.weekdayCalloutRate;
+    settings.weekendCalloutRate = parseFloat(weekendCalloutRateInput.value) || settings.weekendCalloutRate;
+    saveData();
+    alert('Settings saved');
+  });
 }
