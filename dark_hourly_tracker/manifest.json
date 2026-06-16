@@ -1,0 +1,15 @@
+{
+  "name": "Hourly Tracker Dark",
+  "short_name": "HourlyTracker",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#04132a",
+  "theme_color": "#04132a",
+  "icons": [
+    {
+      "src": "../icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
