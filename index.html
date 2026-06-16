@@ -1,173 +1,30 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#293e40">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="SN Employees Time">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css">
-  <title>ServiceNow Employees Time</title>
-</head>
-<body>
-  <header class="hero">
-    <div class="brand-row">
-      <img class="app-icon" src="icon.svg" alt="ServiceNow Employees Time icon">
-      <div>
-        <p class="eyebrow">Proprietary software developed for Hansel</p>
-        <h1>ServiceNow Employees Time</h1>
-      </div>
+  <head>
+    <meta charset="utf-8" />
+    <title>ServiceNow Employee Time Tracker</title>
+    <!-- Redirect to the dark_hourly_tracker application. Using a meta refresh ensures GitHub Pages serves the enhanced app -->
+    <meta http-equiv="refresh" content="0; url=./dark_hourly_tracker/index.html" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #04132a;
+        color: #e6f1ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+      a {
+        color: #1f77d4;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p>Redirecting to the new ServiceNow Employee Time Tracker…</p>
+      <p>If you are not automatically redirected, <a href="dark_hourly_tracker/index.html">click here</a>.</p>
     </div>
-    <div class="status-pill" id="sync-status">Device save on</div>
-  </header>
-
-  <main>
-    <section class="card live-card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Clock from leave to home</p>
-          <h2>Live shift timer</h2>
-        </div>
-        <span id="clock-state" class="mini-pill">Not running</span>
-      </div>
-
-      <div class="timer" id="live-timer">00:00:00</div>
-      <p class="muted" id="timer-note">Tap Clock In when you leave. Tap Clock Out when you get home.</p>
-
-      <label class="check-row">
-        <input type="checkbox" id="active-callout">
-        <span>Mark this shift as a call-out</span>
-      </label>
-
-      <textarea id="active-notes" rows="2" placeholder="Optional notes, job name, or location"></textarea>
-
-      <div class="button-row">
-        <button class="primary" id="clock-in-btn">Clock In Now</button>
-        <button class="danger" id="clock-out-btn">Clock Out & Save</button>
-      </div>
-    </section>
-
-    <section class="summary-grid">
-      <article class="stat-card">
-        <span>This week hours</span>
-        <strong id="week-hours">0.00</strong>
-      </article>
-      <article class="stat-card">
-        <span>Regular pay</span>
-        <strong id="week-regular-pay">$0.00</strong>
-      </article>
-      <article class="stat-card">
-        <span>Overtime pay</span>
-        <strong id="week-overtime-pay">$0.00</strong>
-      </article>
-      <article class="stat-card highlight">
-        <span>Total week pay</span>
-        <strong id="week-total-pay">$0.00</strong>
-      </article>
-    </section>
-
-    <section class="card">
-      <div class="week-bar">
-        <button id="prev-week" class="ghost">Back</button>
-        <div>
-          <p class="eyebrow">Selected week</p>
-          <h2 id="week-label">This week</h2>
-        </div>
-        <button id="next-week" class="ghost">Next</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Manual add</p>
-          <h2>Add missed time</h2>
-        </div>
-      </div>
-
-      <form id="manual-form" class="form-grid">
-        <label>Date
-          <input type="date" id="manual-date" required>
-        </label>
-        <label>Start time
-          <input type="time" id="manual-start" required>
-        </label>
-        <label>End time
-          <input type="time" id="manual-end" required>
-        </label>
-        <label>Call-out
-          <select id="manual-callout">
-            <option value="no">No call-out</option>
-            <option value="yes">Yes, add fee</option>
-          </select>
-        </label>
-        <label class="wide">Notes
-          <input type="text" id="manual-notes" placeholder="Optional notes">
-        </label>
-        <button class="primary wide" type="submit">Save Entry</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Pay rules</p>
-          <h2>Settings</h2>
-        </div>
-        <button class="ghost small" id="reset-settings">Reset</button>
-      </div>
-
-      <div class="form-grid">
-        <label>Regular hourly
-          <input type="number" id="regular-rate" step="0.01">
-        </label>
-        <label>Overtime hourly
-          <input type="number" id="overtime-rate" step="0.01">
-        </label>
-        <label>Weekly regular limit
-          <input type="number" id="weekly-limit" step="0.25">
-        </label>
-        <label>Weekday call-out fee
-          <input type="number" id="weekday-fee" step="0.01">
-        </label>
-        <label>Weekend call-out fee
-          <input type="number" id="weekend-fee" step="0.01">
-        </label>
-        <button class="primary" id="save-settings">Save Settings</button>
-      </div>
-      <p class="muted">Default rules: $32 regular, $48 overtime, $25 weekday call-out, $50 weekend call-out.</p>
-    </section>
-
-    <section class="card">
-      <div class="card-heading">
-        <div>
-          <p class="eyebrow">Saved records</p>
-          <h2>Entries</h2>
-        </div>
-        <button class="ghost small" id="export-json">Export</button>
-      </div>
-      <div id="entries-list" class="entries-list"></div>
-    </section>
-  </main>
-
-  <template id="entry-template">
-    <article class="entry-card">
-      <div>
-        <strong class="entry-date"></strong>
-        <p class="entry-time muted"></p>
-        <p class="entry-notes muted"></p>
-      </div>
-      <div class="entry-pay"></div>
-      <button class="delete-entry" type="button">Delete</button>
-    </article>
-  </template>
-
-  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"></script>
-  <script src="script.js"></script>
-</body>
+  </body>
 </html>
