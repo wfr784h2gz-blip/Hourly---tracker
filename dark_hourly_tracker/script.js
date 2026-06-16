@@ -327,6 +327,7 @@ function renderEntries() {
   entriesBody.innerHTML = '';
   const recent = entries.slice(-5).reverse();
   recent.forEach(entry => {
+    const index = entries.indexOf(entry);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${entry.date}</td>
@@ -338,7 +339,13 @@ function renderEntries() {
       <td>$${entry.calloutPay.toFixed(2)}</td>
       <td>$${entry.commission.toFixed(2)}</td>
       <td>$${entry.totalPay.toFixed(2)}</td>
+      <td><button class="delete-entry" data-index="${index}">Delete</button></td>
     `;
+    // attach delete handler
+    tr.querySelector('.delete-entry').addEventListener('click', (e) => {
+      const idx = parseInt(e.target.getAttribute('data-index'));
+      deleteEntry(idx);
+    });
     entriesBody.appendChild(tr);
   });
   renderAllEntries();
@@ -352,6 +359,7 @@ function renderAllEntries() {
   const sorted = [...entries];
   sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
   sorted.forEach(entry => {
+    const idx = entries.indexOf(entry);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${entry.date}</td>
@@ -363,7 +371,13 @@ function renderAllEntries() {
       <td>$${entry.calloutPay.toFixed(2)}</td>
       <td>$${entry.commission.toFixed(2)}</td>
       <td>$${entry.totalPay.toFixed(2)}</td>
+      <td><button class="delete-entry" data-index="${idx}">Delete</button></td>
     `;
+    // attach delete handler
+    tr.querySelector('.delete-entry').addEventListener('click', (e) => {
+      const delIdx = parseInt(e.target.getAttribute('data-index'));
+      deleteEntry(delIdx);
+    });
     allEntriesBody.appendChild(tr);
   });
 }
@@ -386,31 +400,86 @@ function updateCalloutPreviewClone() {
   calloutPayAmountClone.textContent = `$${amount.toFixed(2)}`;
   calloutPayDescClone.textContent = type === 'weekday' ? 'Weekday Call‑Out' : 'Weekend Call‑Out';
 }
-if (calloutTypeClone) {
-  calloutTypeClone.addEventListener('change', updateCalloutPreviewClone);
-  updateCalloutPreviewClone();
+if (calloutTypeClone) calloutTypeClone.addEventListener('change', updateCalloutPreviewClone);
+if (calloutTypeClone) updateCalloutPreviewClone();
+
+// Update callout summary display
+function updateCalloutSummary() {
+  weekdayTotalDisplay.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
+  weekendTotalDisplay.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
+  const totalCall = weekdayCalloutTotal + weekendCalloutTotal;
+  totalCalloutDisplay.textContent = `$${totalCall.toFixed(2)}`;
+  // Update clone summary as well
+  const wt2 = document.getElementById('weekdayTotal2');
+  const wk2 = document.getElementById('weekendTotal2');
+  const ct2 = document.getElementById('commissionTotal2');
+  const tt2 = document.getElementById('totalCallout2');
+  if (wt2) wt2.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
+  if (wk2) wk2.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
+  if (ct2) ct2.textContent = `$${commissionsTotal.toFixed(2)}`;
+  if (tt2) tt2.textContent = `$${(weekdayCalloutTotal + weekendCalloutTotal).toFixed(2)}`;
+  // Refresh paycheck estimate whenever callout totals change
+  updatePaycheckEstimate();
 }
 
-// Handle adding a call‑out to the latest entry or as standalone
-document.getElementById('addCalloutBtn').addEventListener('click', () => {
-  const type = calloutTypeSelect.value;
+function updateCommissionSummary() {
+  commissionTotalDisplay.textContent = `$${commissionsTotal.toFixed(2)}`;
+  // Update clone as well
+  if (commissionTotalDisplay2) commissionTotalDisplay2.textContent = `$${commissionsTotal.toFixed(2)}`;
+  updatePaycheckEstimate();
+}
+
+// Update summary for today (regular, overtime, total and pay)
+function updateSummaryForToday() {
+  // Sum durations and overtime for entries with today’s date
+  const today = new Date().toLocaleDateString();
+  let totalMs = 0;
+  let overtimeMs = 0;
+  let regMs = 0;
+  let totalPay = 0;
+  entries.forEach(entry => {
+    if (entry.date === today) {
+      totalMs += entry.durationMs;
+      overtimeMs += entry.overtimeMs;
+      regMs += (entry.durationMs - entry.overtimeMs);
+      totalPay += entry.totalPay;
+    }
+  });
+  regularHoursDisplay.textContent = formatDuration(regMs);
+  summaryOvertimeDisplay.textContent = formatDuration(overtimeMs);
+  summaryTotalDisplay.textContent = formatDuration(totalMs);
+  const regPay = (regMs / 3600000) * settings.regularRate;
+  const overPay = (overtimeMs / 3600000) * settings.overtimeRate;
+  regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
+  overtimePayDisplay.textContent = `$${overPay.toFixed(2)}`;
+  totalPayDisplay.textContent = `$${(regPay + overPay).toFixed(2)}`;
+}
+
+// Callout handling
+function addCallout(type, date) {
   const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
-  // accumulate totals
   if (type === 'weekday') {
     weekdayCalloutTotal += amount;
   } else {
     weekendCalloutTotal += amount;
   }
+  // Update summary and maybe assign to entry
   updateCalloutSummary();
-  // Apply to last entry if exists; else create new entry
+  // Add to last entry or new entry
+  const entryDate = date || new Date().toLocaleDateString();
   let entry;
-  if (entries.length > 0) {
-    entry = entries[entries.length - 1];
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].date === entryDate) {
+      entry = entries[i];
+      break;
+    }
+  }
+  if (entry) {
     entry.calloutPay += amount;
     entry.totalPay += amount;
   } else {
     entry = {
-      date: new Date().toLocaleDateString(),
+      date: entryDate,
       startTime: '--',
       endTime: '--',
       durationMs: 0,
@@ -422,72 +491,52 @@ document.getElementById('addCalloutBtn').addEventListener('click', () => {
     };
     entries.push(entry);
   }
-  saveData();
   renderEntries();
   updateSummaryForToday();
-});
-
-function updateCalloutSummary() {
-  // Update first set
-  weekdayTotalDisplay.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
-  weekendTotalDisplay.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
-  const totalCall = weekdayCalloutTotal + weekendCalloutTotal + commissionsTotal;
-  totalCalloutDisplay.textContent = `$${totalCall.toFixed(2)}`;
-  // Update second set if exists
-  if (typeof weekdayTotal2 !== 'undefined') {
-    const wd2 = document.getElementById('weekdayTotal2');
-    const we2 = document.getElementById('weekendTotal2');
-    const tot2 = document.getElementById('totalCallout2');
-    if (wd2) wd2.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
-    if (we2) we2.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
-    if (tot2) tot2.textContent = `$${totalCall.toFixed(2)}`;
-  }
-  updateCommissionSummary();
   saveData();
 }
 
-function updateCommissionSummary() {
-  if (commissionTotalDisplay) commissionTotalDisplay.textContent = `$${commissionsTotal.toFixed(2)}`;
-  if (commissionTotalDisplay2) commissionTotalDisplay2.textContent = `$${commissionsTotal.toFixed(2)}`;
-  // Refresh paycheck estimate whenever call‑out totals change
-  updatePaycheckEstimate();
-}
-
-// Update summary card for today's totals
-function updateSummaryForToday() {
-  const today = new Date().toLocaleDateString();
-  let totalDuration = 0;
-  let totalOvertime = 0;
-  let totalCallout = 0;
-  let totalCommission = 0;
-  entries.forEach(entry => {
-    if (entry.date === today) {
-      totalDuration += entry.durationMs;
-      totalOvertime += entry.overtimeMs;
-      totalCallout += entry.calloutPay;
-      totalCommission += entry.commission;
+// Event listeners for callout button
+if (document.getElementById('addCalloutBtn')) {
+  document.getElementById('addCalloutBtn').addEventListener('click', () => {
+    const type = calloutTypeSelect.value;
+    const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
+    if (type === 'weekday') {
+      weekdayCalloutTotal += amount;
+    } else {
+      weekendCalloutTotal += amount;
     }
-  });
-  const regularMs = Math.max(0, totalDuration - totalOvertime);
-  regularHoursDisplay.textContent = formatDuration(regularMs);
-  summaryOvertimeDisplay.textContent = formatDuration(totalOvertime);
-  summaryTotalDisplay.textContent = formatDuration(totalDuration);
-  const regPay = (regularMs / 3600000) * settings.regularRate;
-  const overPay = (totalOvertime / 3600000) * settings.overtimeRate;
-  regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
-  overtimePayDisplay.textContent = `$${overPay.toFixed(2)}`;
-  commissionPayDisplay.textContent = `$${totalCommission.toFixed(2)}`;
-  const totalPay = regPay + overPay + totalCallout + totalCommission;
-  totalPayDisplay.textContent = `$${totalPay.toFixed(2)}`;
-  saveData();
-  // Refresh paycheck estimate whenever today's summary is recalculated
-  updatePaycheckEstimate();
-}
-
-// Register service worker for offline support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(err => console.error(err));
+    updateCalloutSummary();
+    // Add callout to last entry or new entry based on date field
+    const dateStr = calloutDateInput.value ? new Date(calloutDateInput.value).toLocaleDateString() : new Date().toLocaleDateString();
+    let entry;
+    // find last entry with same date
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].date === dateStr) {
+        entry = entries[i];
+        break;
+      }
+    }
+    if (entry) {
+      entry.calloutPay += amount;
+      entry.totalPay += amount;
+    } else {
+      entry = {
+        date: dateStr,
+        startTime: '--',
+        endTime: '--',
+        durationMs: 0,
+        overtimeMs: 0,
+        hoursPay: 0,
+        calloutPay: amount,
+        commission: 0,
+        totalPay: amount
+      };
+      entries.push(entry);
+    }
+    renderEntries();
+    updateSummaryForToday();
+    saveData();
   });
 }
 
@@ -612,7 +661,9 @@ function showSection(id) {
   switch (id) {
     case 'dashboardSection':
       title.textContent = 'Dashboard';
-      subtitle.textContent = 'Track your hours, overtime, call‑outs and commissions';
+      // Display branding under the dashboard heading rather than the generic description.
+      // The subtitle persists even after navigating away and back to the dashboard.
+      subtitle.textContent = 'ServiceNow Employee Time Tracker';
       break;
     case 'timeEntriesSection':
       title.textContent = 'Time Entries';
@@ -652,6 +703,35 @@ navItems.forEach(item => {
     showSection(targetId);
   });
 });
+
+// "View All Entries" button navigates to the Time Entries section and activates nav
+const viewAllBtnElem = document.getElementById('viewAllBtn');
+if (viewAllBtnElem) {
+  viewAllBtnElem.addEventListener('click', () => {
+    // Show the time entries section
+    showSection('timeEntriesSection');
+    // Update nav active state
+    navItems.forEach(li => li.classList.remove('active'));
+    const targetItem = document.querySelector('.nav li[data-target="timeEntriesSection"]');
+    if (targetItem) {
+      targetItem.classList.add('active');
+    }
+  });
+}
+
+// Delete an entry by index and refresh all related UI elements
+function deleteEntry(idx) {
+  if (idx == null || idx < 0 || idx >= entries.length) return;
+  // Remove entry from array
+  entries.splice(idx, 1);
+  saveData();
+  // Refresh summaries and lists
+  updateSummaryForToday();
+  updateCalloutSummary();
+  renderEntries();
+  // Refresh paycheck estimate
+  updatePaycheckEstimate();
+}
 
 // Report generation
 if (document.getElementById('generateReportBtn')) {
