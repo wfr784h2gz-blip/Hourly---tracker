@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Hourly Tracker">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ServiceNow Employee Tracker">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#14b8a6"/>
-      <stop offset="1" stop-color="#0f766e"/>
+      <stop offset="0" stop-color="#81b5a1"/>
+      <stop offset="1" stop-color="#293e40"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="118" fill="#061b1b"/>
+  <rect width="512" height="512" rx="118" fill="#293e40"/>
   <circle cx="256" cy="256" r="174" fill="url(#g)"/>
   <path d="M256 126v136l94 58" fill="none" stroke="#fff" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="256" y="428" text-anchor="middle" font-family="Arial, sans-serif" font-size="70" font-weight="900" fill="#fff">HR</text>
+  <text x="256" y="428" text-anchor="middle" font-family="Arial, sans-serif" font-size="70" font-weight="900" fill="#fff">SN</text>
 </svg>
