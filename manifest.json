@@ -1,12 +1,10 @@
 {
-  "name": "ServiceNow Employees Time",
-  "short_name": "SN Employees Time",
-  "description": "Proprietary software developed for Hansel",
+  "name": "Hourly Tracker Dark",
+  "short_name": "HourlyTracker",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#293e40",
-  "theme_color": "#293e40",
+  "background_color": "#04132a",
+  "theme_color": "#04132a",
   "icons": [
     {
       "src": "icon.svg",
