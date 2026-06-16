@@ -1,7 +1,7 @@
 {
-  "name": "ServiceNow Employee Time Tracker",
-  "short_name": "SN Tracker",
-  "description": "Track work hours, overtime pay, and call-out fees from your phone.",
+  "name": "ServiceNow Employees Time",
+  "short_name": "SN Employees Time",
+  "description": "Proprietary software developed for Hansel",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
