@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#04132a" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Hourly Tracker – Dark Theme</title>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="logo-circle">HT</div>
+          <div>
+            <h1>Hourly Tracker</h1>
+            <p class="tagline">Track your time, get paid.</p>
+          </div>
+        </div>
+        <nav class="nav">
+          <ul>
+            <li class="active"><span class="icon">📊</span>Dashboard</li>
+            <li><span class="icon">🕒</span>Time Entries</li>
+            <li><span class="icon">📞</span>Call‑Out Tracker</li>
+            <li><span class="icon">📄</span>Reports</li>
+            <li><span class="icon">📅</span>Calendar</li>
+            <li><span class="icon">⚙️</span>Settings</li>
+          </ul>
+        </nav>
+        <div class="user-footer">
+          <div class="avatar">U</div>
+          <div>
+            <p class="username">User</p>
+            <p class="rate">$32/hr Standard</p>
+          </div>
+        </div>
+      </aside>
+      <!-- Main content -->
+      <main class="main">
+        <!-- Header -->
+        <header class="top-bar">
+          <div class="header-left">
+            <h2>Dashboard</h2>
+            <p>Track your hours, overtime, and call‑out pay</p>
+          </div>
+          <div class="header-right">
+            <span class="status-indicator">● Live</span>
+            <span class="current-date" id="currentDate"></span>
+          </div>
+        </header>
+
+        <!-- Grid layout for cards -->
+        <div class="grid">
+          <!-- Time tracker card -->
+          <section class="card tracker-card">
+            <h3>Time Tracker</h3>
+            <p class="subtitle">Track your work hours</p>
+            <div class="inputs">
+              <div class="time-group">
+                <label for="startTime">
+                  <span class="circle green"></span>Start Time
+                </label>
+                <input type="time" id="startTime" />
+              </div>
+              <div class="time-group">
+                <label for="endTime">
+                  <span class="circle red"></span>End Time
+                </label>
+                <input type="time" id="endTime" />
+              </div>
+            </div>
+            <div class="results">
+              <div class="total">
+                <span id="totalTime">0h 0m</span>
+              </div>
+              <div class="overtime">
+                <span id="overtime">0h 0m overtime</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="startBtn" class="btn green">Start</button>
+              <button id="stopBtn" class="btn red">Stop</button>
+            </div>
+          </section>
+          <!-- Summary card -->
+          <section class="card summary-card">
+            <h3>Today's Summary</h3>
+            <ul class="summary-list">
+              <li>
+                <span>Regular Hours (up to 8)</span>
+                <span id="regularHours" class="value blue">0h 0m</span>
+              </li>
+              <li>
+                <span>Overtime Hours</span>
+                <span id="summaryOvertime" class="value orange">0h 0m</span>
+              </li>
+              <li>
+                <span>Total Hours</span>
+                <span id="summaryTotal" class="value purple">0h 0m</span>
+              </li>
+              <li>
+                <span>Regular Pay (@ $32/hr)</span>
+                <span id="regularPay" class="value green-money">$0.00</span>
+              </li>
+              <li>
+                <span>Overtime Pay (@ $48/hr)</span>
+                <span id="overtimePay" class="value orange-money">$0.00</span>
+              </li>
+              <li class="total-row">
+                <span>Total Pay (Hours)</span>
+                <span id="totalPay" class="value total-money">$0.00</span>
+              </li>
+            </ul>
+          </section>
+          <!-- Call‑out tracker -->
+          <section class="card callout-card">
+            <h3>Call‑Out Tracker</h3>
+            <p class="subtitle">Track call‑out pay (separate from hours)</p>
+            <div class="callout-fields">
+              <div class="field">
+                <label for="calloutType">Type</label>
+                <select id="calloutType">
+                  <option value="weekday">Weekday</option>
+                  <option value="weekend">Weekend</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="calloutDate">Date</label>
+                <input type="date" id="calloutDate" />
+              </div>
+            </div>
+            <div class="callout-display">
+              <span id="calloutPayAmount" class="callout-amount">$0.00</span>
+              <span id="calloutPayDesc" class="callout-desc">Weekday Call‑Out</span>
+            </div>
+            <button id="addCalloutBtn" class="btn blue">+ Add Call‑Out</button>
+          </section>
+          <!-- Call‑out summary -->
+          <section class="card callout-summary-card">
+            <ul class="summary-list">
+              <li>
+                <span>Weekday Call‑Out</span>
+                <span id="weekdayTotal" class="value">$0.00</span>
+              </li>
+              <li>
+                <span>Weekend Call‑Out</span>
+                <span id="weekendTotal" class="value">$0.00</span>
+              </li>
+              <li class="total-row">
+                <span>Total Call‑Out Pay</span>
+                <span id="totalCallout" class="value total-money">$0.00</span>
+              </li>
+            </ul>
+          </section>
+          <!-- Recent entries -->
+          <section class="card entries-card">
+            <h3>Recent Entries</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Total</th>
+                  <th>Overtime</th>
+                  <th>Hours Pay</th>
+                  <th>Call‑Out Pay</th>
+                  <th>Total Pay</th>
+                </tr>
+              </thead>
+              <tbody id="entriesBody">
+                <!-- dynamically populated -->
+              </tbody>
+            </table>
+            <button id="viewAllBtn" class="btn transparent">View All Entries</button>
+          </section>
+        </div>
+        <footer class="footer-note">
+          Hourly Tracker • All data is saved in the cloud automatically
+        </footer>
+      </main>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
