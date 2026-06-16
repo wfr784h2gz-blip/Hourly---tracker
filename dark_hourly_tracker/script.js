@@ -1,6 +1,10 @@
-// This file is a modified version of the dark_hourly_tracker/script.js from
-// the Hourly Tracker project. It includes persistence of the active start
-// time across page reloads. See the commit message for details.
+// This file is an enhanced version of the dark_hourly_tracker/script.js from
+// the Hourly Tracker project. In addition to persisting the active start
+// time across page reloads, it also provides a live timer that updates
+// the displayed hours, overtime and pay as time elapses. When the user
+// clicks Start, the timer begins updating every second, and it stops
+// automatically when the user clicks Stop. Upon reload, if there is
+// an active start time saved and no end time, the timer resumes.
 
 // Helper to format duration into hours and minutes
 function formatDuration(ms) {
@@ -65,8 +69,10 @@ function loadActiveStartTime() {
     const savedStart = localStorage.getItem('activeStartTime');
     if (savedStart) {
       startTimeInput.value = savedStart;
-      // If an end time is already filled, recalculate totals
-      if (endTimeInput.value) {
+      // If there is no end time yet, resume the live timer
+      if (!endTimeInput.value) {
+        startTimer();
+      } else {
         updateTimeCalculation();
       }
     }
@@ -88,6 +94,54 @@ function clearActiveStartTime() {
     localStorage.removeItem('activeStartTime');
   } catch (e) {
     console.error('Failed to clear active start time', e);
+  }
+}
+
+// Timer state for live counter
+let timerInterval = null;
+
+// Update the live timer display based on the current time and the start time
+function updateLiveTimer() {
+  if (!startTimeInput.value) return;
+  const startMs = parseTimeToMs(startTimeInput.value);
+  const now = new Date();
+  // milliseconds since start of day
+  const nowMs = (now.getHours() * 60 + now.getMinutes()) * 60000 + now.getSeconds() * 1000;
+  let durationMs = nowMs - startMs;
+  if (durationMs < 0) {
+    // handle overnight shifts
+    durationMs += 24 * 3600000;
+  }
+  const overtimeMs = Math.max(0, durationMs - 8 * 3600000);
+  const regularMs = durationMs - overtimeMs;
+  // Update display elements
+  totalTimeDisplay.textContent = formatDuration(durationMs);
+  overtimeDisplay.textContent = formatDuration(overtimeMs) + (overtimeMs > 0 ? ' overtime' : '');
+  regularHoursDisplay.textContent = formatDuration(regularMs);
+  summaryOvertimeDisplay.textContent = formatDuration(overtimeMs);
+  summaryTotalDisplay.textContent = formatDuration(durationMs);
+  const overtimePay = (overtimeMs / 3600000) * settings.overtimeRate;
+  const regPay = (regularMs / 3600000) * settings.regularRate;
+  regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
+  overtimePayDisplay.textContent = `$${overtimePay.toFixed(2)}`;
+  totalPayDisplay.textContent = `$${(regPay + overtimePay).toFixed(2)}`;
+}
+
+// Start the live timer interval
+function startTimer() {
+  // update immediately
+  updateLiveTimer();
+  // clear any existing interval
+  if (timerInterval) clearInterval(timerInterval);
+  // update every second
+  timerInterval = setInterval(updateLiveTimer, 1000);
+}
+
+// Stop the live timer interval
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
   }
 }
 
@@ -160,19 +214,21 @@ populateSettings();
 updateCalloutSummary();
 updateSummaryForToday();
 renderEntries();
-// Restore any saved start time after rendering
+// Restore any saved start time after rendering (and resume timer if needed)
 loadActiveStartTime();
 
-// Handle the start button: record the current time into the start field and persist it
+// Handle the start button: record the current time into the start field, persist it and start live timer
 document.getElementById('startBtn').addEventListener('click', () => {
   const now = new Date();
   const startStr = now.toTimeString().slice(0, 5);
   startTimeInput.value = startStr;
   persistActiveStartTime(startStr);
+  startTimer();
 });
 
-// Handle the stop button: record the current time into the end field, compute totals and clear active start time
+// Handle the stop button: stop the live timer, record the current time into the end field, compute totals and clear active start time
 document.getElementById('stopBtn').addEventListener('click', () => {
+  stopTimer();
   const now = new Date();
   endTimeInput.value = now.toTimeString().slice(0, 5);
   updateTimeCalculation();
