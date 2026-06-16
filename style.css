@@ -3,8 +3,8 @@
   --card: #ffffff;
   --muted: #667085;
   --text: #132322;
-  --teal: #0f766e;
-  --teal-dark: #115e59;
+  --teal: #81b5a1;
+  --teal-dark: #293e40;
   --danger: #b42318;
   --gold: #f59e0b;
   --line: #d9e2e1;
@@ -18,8 +18,8 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, .35), transparent 34rem),
-    linear-gradient(180deg, #062827 0%, #eef6f5 22rem, #eef6f5 100%);
+    radial-gradient(circle at top left, rgba(129, 181, 161, .35), transparent 34rem),
+    linear-gradient(180deg, #17373a 0%, #eef6f5 22rem, #eef6f5 100%);
 }
 
 .hero {
@@ -105,7 +105,7 @@ button {
 .stat-card { padding: 1rem; }
 .stat-card span { color: var(--muted); font-size: .82rem; font-weight: 800; }
 .stat-card strong { display: block; margin-top: .4rem; font-size: 1.45rem; }
-.stat-card.highlight { background: linear-gradient(135deg, #134e4a, #0f766e); color: white; }
+.stat-card.highlight { background: linear-gradient(135deg, var(--teal-dark), var(--teal)); color: white; }
 .stat-card.highlight span { color: rgba(255,255,255,.75); }
 
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin-top: 1rem; }
