@@ -407,3 +407,100 @@ body {
     grid-template-columns: 1fr;
   }
 }
+/* Sections are hidden by default except active */
+.section {
+  display: none;
+}
+.section.active {
+  display: block;
+}
+/* Full table for time entries section */
+.full-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+.full-table th,
+.full-table td {
+  padding: 8px 6px;
+  font-size: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--text-primary);
+}
+.full-table thead {
+  background: #031c3d;
+}
+.full-table th {
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+.full-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+/* Commission card styling */
+.commission-card .commission-fields {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+.commission-card .field label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.commission-card input[type='number'],
+.commission-card input[type='date'] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--card-border);
+  background: #031c3d;
+  color: var(--text-primary);
+}
+/* Settings panel */
+.settings-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.settings-fields .field {
+  flex: 1 1 200px;
+}
+.settings-fields input[type='number'] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--card-border);
+  background: #031c3d;
+  color: var(--text-primary);
+}
+/* Report controls */
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+.report-controls label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.report-controls input[type='date'] {
+  margin-left: 5px;
+  padding: 6px 8px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--card-border);
+  background: #031c3d;
+  color: var(--text-primary);
+}
+.report-controls .btn {
+  margin-top: 5px;
+}
+/* Title update when nav clicked */
+#mainTitle {
+  transition: color 0.3s;
+}
