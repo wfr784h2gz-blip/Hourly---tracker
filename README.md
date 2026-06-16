@@ -23,7 +23,13 @@ A mobile-friendly live time tracking web app for iPhone. It tracks work from clo
 
 ## Live access
 
-Once GitHub Pages or another static host is enabled, open the site URL in Safari and choose Share > Add to Home Screen.
+App link:
+https://wfr784h2gz-blip.github.io/Hourly---tracker/
+
+GitHub code link:
+https://github.com/wfr784h2gz-blip/Hourly---tracker
+
+Open the app link in Safari and choose Share > Add to Home Screen.
 
 ## Cloud sync setup
 
