@@ -8,17 +8,17 @@
     <link rel="stylesheet" href="style.css" />
     <!-- Chart.js for reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>Hourly Tracker – Dark Theme</title>
+    <title>ServiceNow Employee Time Tracker – Dark Theme</title>
   </head>
   <body>
     <div class="container">
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="brand">
-          <div class="logo-circle">HT</div>
+          <div class="logo-circle">SN</div>
           <div>
-            <h1>Hourly Tracker</h1>
-            <p class="tagline">Track your time, get paid.</p>
+            <h1>ServiceNow Employee Time Tracker</h1>
+            <p class="tagline">Track your time and earnings.</p>
           </div>
         </div>
         <nav class="nav">
@@ -181,6 +181,29 @@
                 </li>
               </ul>
             </section>
+            <!-- Paycheck estimate card -->
+            <section class="card paycheck-card">
+              <h3>Paycheck Estimate</h3>
+              <p class="subtitle">Get a forecast of your earnings (pre‑tax)</p>
+              <ul class="summary-list">
+                <li>
+                  <span>Hours Pay</span>
+                  <span id="paycheckHoursPay" class="value green-money">$0.00</span>
+                </li>
+                <li>
+                  <span>Call‑Out Pay</span>
+                  <span id="paycheckCalloutPay" class="value orange-money">$0.00</span>
+                </li>
+                <li>
+                  <span>Commission</span>
+                  <span id="paycheckCommissionPay" class="value blue-money">$0.00</span>
+                </li>
+                <li class="total-row">
+                  <span>Total (Pre‑Tax)</span>
+                  <span id="paycheckTotalPay" class="value total-money">$0.00</span>
+                </li>
+              </ul>
+            </section>
             <!-- Recent entries -->
             <section class="card entries-card">
               <h3>Recent Entries</h3>
@@ -322,10 +345,11 @@
           <button id="saveSettingsBtn" class="btn green">Save Settings</button>
         </div>
         <footer class="footer-note">
-          Hourly Tracker • Your data is stored locally and stays private
+          ServiceNow Employee Time Tracker • Your data is stored locally and stays private
         </footer>
       </main>
     </div>
+    <!-- Use the built-in dark script -->
     <script src="script.js"></script>
   </body>
 </html>
