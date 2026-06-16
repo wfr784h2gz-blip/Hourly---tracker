@@ -188,6 +188,46 @@ const weekdayCalloutRateInput = document.getElementById('weekdayCalloutRate');
 const weekendCalloutRateInput = document.getElementById('weekendCalloutRate');
 // Chart instance variable
 let reportChart;
+// Paycheck estimate DOM elements
+const paycheckHoursPayDisplay = document.getElementById('paycheckHoursPay');
+const paycheckCalloutPayDisplay = document.getElementById('paycheckCalloutPay');
+const paycheckCommissionPayDisplay = document.getElementById('paycheckCommissionPay');
+const paycheckTotalPayDisplay = document.getElementById('paycheckTotalPay');
+
+//
+// Calculate and update the paycheck estimate section. This aggregates all entries
+// recorded in the system and computes the total pay derived from hours worked,
+// call‑out pay and commissions. The computed values are written to the
+// respective placeholders on the Paycheck Estimate card. If any of the DOM
+// elements do not exist (for example if the user navigates away from the
+// dashboard) then the function safely returns without side effects.
+function updatePaycheckEstimate() {
+  // Ensure the DOM elements exist before attempting to update them
+  if (!paycheckHoursPayDisplay || !paycheckCalloutPayDisplay || !paycheckCommissionPayDisplay || !paycheckTotalPayDisplay) {
+    return;
+  }
+  // Aggregate totals across all entries
+  let totalHoursPay = 0;
+  let totalCalloutPay = 0;
+  let totalCommissionPay = 0;
+  entries.forEach(entry => {
+    totalHoursPay += entry.hoursPay;
+    totalCalloutPay += entry.calloutPay;
+    totalCommissionPay += entry.commission;
+  });
+  // Use the global commissionsTotal and callout totals as fallback if entries
+  // haven't been populated yet (e.g. on first load before renderEntries runs).
+  if (entries.length === 0) {
+    totalCalloutPay = weekdayCalloutTotal + weekendCalloutTotal;
+    totalCommissionPay = commissionsTotal;
+  }
+  const totalGrossPay = totalHoursPay + totalCalloutPay + totalCommissionPay;
+  // Update the UI with formatted values
+  paycheckHoursPayDisplay.textContent = `$${totalHoursPay.toFixed(2)}`;
+  paycheckCalloutPayDisplay.textContent = `$${totalCalloutPay.toFixed(2)}`;
+  paycheckCommissionPayDisplay.textContent = `$${totalCommissionPay.toFixed(2)}`;
+  paycheckTotalPayDisplay.textContent = `$${totalGrossPay.toFixed(2)}`;
+}
 
 // Update the header date
 function updateCurrentDate() {
@@ -216,6 +256,8 @@ updateSummaryForToday();
 renderEntries();
 // Restore any saved start time after rendering (and resume timer if needed)
 loadActiveStartTime();
+// Update paycheck estimate on load
+updatePaycheckEstimate();
 
 // Handle the start button: record the current time into the start field, persist it and start live timer
 document.getElementById('startBtn').addEventListener('click', () => {
@@ -276,6 +318,8 @@ function updateTimeCalculation() {
   saveData();
   renderEntries();
   updateSummaryForToday();
+  // Refresh paycheck estimate after computing new entry
+  updatePaycheckEstimate();
 }
 
 // Render the latest entries in the table (showing up to 5 most recent)
@@ -405,6 +449,8 @@ function updateCalloutSummary() {
 function updateCommissionSummary() {
   if (commissionTotalDisplay) commissionTotalDisplay.textContent = `$${commissionsTotal.toFixed(2)}`;
   if (commissionTotalDisplay2) commissionTotalDisplay2.textContent = `$${commissionsTotal.toFixed(2)}`;
+  // Refresh paycheck estimate whenever call‑out totals change
+  updatePaycheckEstimate();
 }
 
 // Update summary card for today's totals
@@ -434,6 +480,8 @@ function updateSummaryForToday() {
   const totalPay = regPay + overPay + totalCallout + totalCommission;
   totalPayDisplay.textContent = `$${totalPay.toFixed(2)}`;
   saveData();
+  // Refresh paycheck estimate whenever today's summary is recalculated
+  updatePaycheckEstimate();
 }
 
 // Register service worker for offline support
