@@ -1,3 +1,7 @@
+// This file is a modified version of the dark_hourly_tracker/script.js from
+// the Hourly Tracker project. It includes persistence of the active start
+// time across page reloads. See the commit message for details.
+
 // Helper to format duration into hours and minutes
 function formatDuration(ms) {
   const totalMinutes = Math.floor(ms / 60000);
@@ -12,7 +16,7 @@ function parseTimeToMs(timeStr) {
   return ((h * 60) + m) * 60000;
 }
 
-// Store entries, call-out totals, commissions and settings
+// Store entries, call‑out totals, commissions and settings
 let entries = [];
 let weekdayCalloutTotal = 0;
 let weekendCalloutTotal = 0;
@@ -52,6 +56,38 @@ function saveData() {
     }));
   } catch (e) {
     console.error('Failed to save data', e);
+  }
+}
+
+// Persistence of active start time across reloads
+function loadActiveStartTime() {
+  try {
+    const savedStart = localStorage.getItem('activeStartTime');
+    if (savedStart) {
+      startTimeInput.value = savedStart;
+      // If an end time is already filled, recalculate totals
+      if (endTimeInput.value) {
+        updateTimeCalculation();
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load active start time', e);
+  }
+}
+
+function persistActiveStartTime(timeStr) {
+  try {
+    localStorage.setItem('activeStartTime', timeStr);
+  } catch (e) {
+    console.error('Failed to save active start time', e);
+  }
+}
+
+function clearActiveStartTime() {
+  try {
+    localStorage.removeItem('activeStartTime');
+  } catch (e) {
+    console.error('Failed to clear active start time', e);
   }
 }
 
@@ -107,8 +143,9 @@ function updateCurrentDate() {
 }
 updateCurrentDate();
 
-// Load persisted data
+// Load persisted data and active start time
 loadData();
+
 // Apply settings to rate inputs when available
 function populateSettings() {
   if (regularRateInput) regularRateInput.value = settings.regularRate;
@@ -123,18 +160,23 @@ populateSettings();
 updateCalloutSummary();
 updateSummaryForToday();
 renderEntries();
+// Restore any saved start time after rendering
+loadActiveStartTime();
 
-// Handle the start button: record the current time into the start field
+// Handle the start button: record the current time into the start field and persist it
 document.getElementById('startBtn').addEventListener('click', () => {
   const now = new Date();
-  startTimeInput.value = now.toTimeString().slice(0, 5);
+  const startStr = now.toTimeString().slice(0, 5);
+  startTimeInput.value = startStr;
+  persistActiveStartTime(startStr);
 });
 
-// Handle the stop button: record the current time into the end field and compute totals
+// Handle the stop button: record the current time into the end field, compute totals and clear active start time
 document.getElementById('stopBtn').addEventListener('click', () => {
   const now = new Date();
   endTimeInput.value = now.toTimeString().slice(0, 5);
   updateTimeCalculation();
+  clearActiveStartTime();
 });
 
 function updateTimeCalculation() {
@@ -160,7 +202,7 @@ function updateTimeCalculation() {
   const regPay = (regularMs / 3600000) * settings.regularRate;
   regularPayDisplay.textContent = `$${regPay.toFixed(2)}`;
   overtimePayDisplay.textContent = `$${overtimePay.toFixed(2)}`;
-  // Total pay currently only includes hours pay; call-out and commission added later
+  // Total pay currently only includes hours pay; call‑out and commission added later
   totalPayDisplay.textContent = `$${(regPay + overtimePay).toFixed(2)}`;
   // Create an entry object and add to entries array
   const entry = {
@@ -249,7 +291,7 @@ if (calloutTypeClone) {
   updateCalloutPreviewClone();
 }
 
-// Handle adding a call-out to the latest entry or as standalone
+// Handle adding a call‑out to the latest entry or as standalone
 document.getElementById('addCalloutBtn').addEventListener('click', () => {
   const type = calloutTypeSelect.value;
   const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
@@ -502,8 +544,8 @@ navItems.forEach(item => {
   item.addEventListener('click', () => {
     navItems.forEach(li => li.classList.remove('active'));
     item.classList.add('active');
-    const target = item.getAttribute('data-target');
-    showSection(target);
+    const targetId = item.getAttribute('data-target');
+    showSection(targetId);
   });
 });
 
