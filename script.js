@@ -51,6 +51,13 @@
   let weekdayCalloutRate = parseFloat(localStorage.getItem('weekdayCalloutRate')) || 25;
   let weekendCalloutRate = parseFloat(localStorage.getItem('weekendCalloutRate')) || 50;
 
+  // Idle detection settings
+  let idleDetectionEnabled = JSON.parse(localStorage.getItem('idleDetectionEnabled')) || false;
+  // Idle timeout in seconds (defaults to 5 minutes)
+  let idleTimeoutSecs = parseInt(localStorage.getItem('idleTimeoutSecs')) || 300;
+  // Timestamp of the last detected user activity
+  let lastActivityTime = Date.now();
+
   // Current shift tracking
   let currentShift = null; // { start: Date }
   let timerInterval = null;
@@ -61,7 +68,7 @@
   function formatMinutes(mins) {
     const hours = Math.floor(mins / 60);
     const minutes = Math.floor(mins % 60);
-    return `${hours}h ${minutes}m`;
+    return `${hours}h\u00a0${minutes}m`;
   }
 
   // Format currency
@@ -114,6 +121,7 @@
       end: end.toISOString(),
       regMinutes,
       otMinutes,
+      totalMinutes,
       pay,
       // default category and notes for auto entries
       category: '',
@@ -271,6 +279,7 @@
       end: endDate.toISOString(),
       regMinutes,
       otMinutes,
+      totalMinutes,
       pay,
       category,
       notes,
@@ -351,60 +360,50 @@
     URL.revokeObjectURL(url);
   }
 
-  // Compute custom summary for date range
+  // Compute custom range summary
   function computeRangeSummary() {
     const startVal = document.getElementById('rangeStart').value;
     const endVal = document.getElementById('rangeEnd').value;
     if (!startVal || !endVal) {
-      alert('Please select both start and end dates for the range.');
+      alert('Select start and end dates for the summary.');
       return;
     }
-    const startDate = new Date(startVal);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(endVal);
-    endDate.setHours(23, 59, 59, 999);
-    if (endDate < startDate) {
-      alert('End date must be on or after start date.');
-      return;
-    }
-    let rangeReg = 0;
-    let rangeOt = 0;
-    let rangeRegPay = 0;
-    let rangeOtPay = 0;
-    let rangeCallPay = 0;
-    let rangeComPay = 0;
-    // Entries
+    const startDate = new Date(`${startVal}T00:00:00`);
+    const endDate = new Date(`${endVal}T23:59:59`);
+    let rangeMinutes = 0;
+    let rangePay = 0;
+    let rangeCall = 0;
+    let rangeCom = 0;
+    // Process entries
     entries.forEach((entry) => {
-      const entryStart = new Date(entry.start);
-      if (entryStart >= startDate && entryStart <= endDate) {
-        rangeReg += entry.regMinutes;
-        rangeOt += entry.otMinutes;
-        rangeRegPay += (entry.regMinutes / 60) * regularRate;
-        rangeOtPay += (entry.otMinutes / 60) * overtimeRate;
+      const entryDate = new Date(entry.start);
+      if (entryDate >= startDate && entryDate <= endDate) {
+        const totalMin = typeof entry.totalMinutes === 'number' ? entry.totalMinutes : (entry.regMinutes + entry.otMinutes);
+        rangeMinutes += totalMin;
+        rangePay += entry.pay;
       }
     });
-    // Call‑outs
+    // Process callouts
     callouts.forEach((co) => {
-      const cDate = new Date(co.date);
-      if (cDate >= startDate && cDate <= endDate) {
-        rangeCallPay += co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
+      const coDate = new Date(co.date);
+      if (coDate >= startDate && coDate <= endDate) {
+        rangeCall += co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
       }
     });
-    // Commissions
+    // Process commissions
     commissions.forEach((com) => {
-      const cd = new Date(com.date);
-      if (cd >= startDate && cd <= endDate) {
-        rangeComPay += com.amount;
+      const comDate = new Date(com.date);
+      if (comDate >= startDate && comDate <= endDate) {
+        rangeCom += com.amount;
       }
     });
-    const totalMinutes = rangeReg + rangeOt;
-    const rangePay = rangeRegPay + rangeOtPay;
-    const gross = rangePay + rangeCallPay + rangeComPay;
-    document.getElementById('rangeHours').textContent = formatMinutes(totalMinutes);
+    // Update display
+    document.getElementById('rangeHours').textContent = formatMinutes(rangeMinutes);
     document.getElementById('rangePay').textContent = formatCurrency(rangePay);
-    document.getElementById('rangeCallout').textContent = formatCurrency(rangeCallPay);
-    document.getElementById('rangeCommission').textContent = formatCurrency(rangeComPay);
-    document.getElementById('rangeGross').textContent = formatCurrency(gross);
+    document.getElementById('rangeCallout').textContent = formatCurrency(rangeCall);
+    document.getElementById('rangeCommission').textContent = formatCurrency(rangeCom);
+    const rangeGross = rangePay + rangeCall + rangeCom;
+    document.getElementById('rangeGross').textContent = formatCurrency(rangeGross);
   }
 
   // Delete entry by index
@@ -414,87 +413,68 @@
     updateUI();
   }
 
-  // Edit entry by index: prefill manual entry form and remove the entry
+  // Edit entry by index
   function editEntry(index) {
     const entry = entries[index];
     if (!entry) return;
-    // Prefill manual entry fields with existing entry data
-    const startDate = new Date(entry.start);
-    const endDate = new Date(entry.end);
-    const dateStr = startDate.toISOString().substring(0, 10);
-    const startTime = startDate.toTimeString().substring(0, 5);
-    const endTime = endDate.toTimeString().substring(0, 5);
-    const manualDate = document.getElementById('manualDate');
-    const manualStart = document.getElementById('manualStart');
-    const manualEnd = document.getElementById('manualEnd');
-    const manualCategory = document.getElementById('manualCategory');
-    const manualNotes = document.getElementById('manualNotes');
-    const manualCallout = document.getElementById('manualCallout');
-    const manualCommission = document.getElementById('manualCommission');
-    if (manualDate && manualStart && manualEnd) {
-      manualDate.value = dateStr;
-      manualStart.value = startTime;
-      manualEnd.value = endTime;
-      if (manualCategory) manualCategory.value = entry.category || '';
-      if (manualNotes) manualNotes.value = entry.notes || '';
-      // For editing, reset call‑out and commission fields
-      if (manualCallout) manualCallout.value = '';
-      if (manualCommission) manualCommission.value = '';
-    }
-    // Remove the entry and update storage
+    const entryDate = new Date(entry.start);
+    // Prefill manual entry form
+    document.getElementById('manualDate').value = entryDate.toISOString().substring(0, 10);
+    document.getElementById('manualStart').value = entryDate
+      .toISOString()
+      .substring(11, 16);
+    document.getElementById('manualEnd').value = new Date(entry.end)
+      .toISOString()
+      .substring(11, 16);
+    document.getElementById('manualCallout').value = '';
+    document.getElementById('manualCommission').value = '';
+    document.getElementById('manualCategory').value = entry.category || '';
+    document.getElementById('manualNotes').value = entry.notes || '';
+    // Remove from array and update
     entries.splice(index, 1);
     localStorage.setItem('entries', JSON.stringify(entries));
     updateUI();
-    // Scroll to manual entry card for convenience if exists
+    // Scroll to manual entry form
     const manualCard = document.getElementById('manualEntry');
-    if (manualCard && manualCard.scrollIntoView) {
-      manualCard.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (manualCard) manualCard.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Update UI summary and table
+  // Summary calculations and UI update
   function updateUI() {
-    // Today & week summary variables
-    const now = new Date();
-    const todayKey = now.toISOString().substring(0, 10);
-    // Determine Monday of current week
-    const weekStart = new Date(now);
-    const dayOfWeek = weekStart.getDay();
-    // Adjust to Monday (1) where Sunday is 0
-    const diffToMonday = (dayOfWeek + 6) % 7; // 0 (Mon) => 0, Tue -> 1 etc
-    weekStart.setHours(0, 0, 0, 0);
-    weekStart.setDate(weekStart.getDate() - diffToMonday);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-
-    // Accumulators
+    // Reset totals
     let todayReg = 0;
     let todayOt = 0;
     let todayRegPay = 0;
     let todayOtPay = 0;
     let todayCallPay = 0;
     let todayCommissionPay = 0;
-
     let weekMinutes = 0;
     let weekPay = 0;
-
-    // Process entries for today and week
+    const today = new Date();
+    const todayKey = today.toISOString().substring(0, 10);
+    const weekStart = new Date();
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    // Process entries
     entries.forEach((entry) => {
-      const entryDate = entry.date.substring(0, 10);
-      const startDate = new Date(entry.start);
-      if (entryDate === todayKey) {
+      const dateKey = entry.start.substring(0, 10);
+      const entryDate = new Date(entry.start);
+      const totalMins = typeof entry.totalMinutes === 'number' ? entry.totalMinutes : (entry.regMinutes + entry.otMinutes);
+      if (dateKey === todayKey) {
         todayReg += entry.regMinutes;
         todayOt += entry.otMinutes;
+        const payRate = entry.pay;
         todayRegPay += (entry.regMinutes / 60) * regularRate;
         todayOtPay += (entry.otMinutes / 60) * overtimeRate;
       }
-      if (startDate >= weekStart && startDate < weekEnd) {
-        weekMinutes += entry.regMinutes + entry.otMinutes;
+      if (entryDate >= weekStart && entryDate < weekEnd) {
+        weekMinutes += totalMins;
         weekPay += entry.pay;
       }
     });
-
-    // Process call‑outs
+    // Process callouts
     callouts.forEach((co) => {
       const dateKey = co.date.substring(0, 10);
       const coDate = new Date(co.date);
@@ -504,7 +484,6 @@
         weekPay += rate;
       }
     });
-
     // Process commissions
     commissions.forEach((com) => {
       const dateKey = com.date.substring(0, 10);
@@ -512,7 +491,6 @@
       if (dateKey === todayKey) todayCommissionPay += com.amount;
       if (comDate >= weekStart && comDate < weekEnd) weekPay += com.amount;
     });
-
     // Update today summary
     const todayHours = todayReg + todayOt;
     document.getElementById('todayHours').textContent = formatMinutes(todayReg);
@@ -524,13 +502,11 @@
     document.getElementById('todayCommission').textContent = formatCurrency(todayCommissionPay);
     const todayGross = todayRegPay + todayOtPay + todayCallPay + todayCommissionPay;
     document.getElementById('todayGrossPay').textContent = formatCurrency(todayGross);
-
     // Update weekly summary
     document.getElementById('weekTotalHours').textContent = formatMinutes(
       weekMinutes
     );
     document.getElementById('weekTotalPay').textContent = formatCurrency(weekPay);
-
     // Update entries table
     const tbody = document.querySelector('#entriesTable tbody');
     tbody.innerHTML = '';
@@ -556,6 +532,18 @@
         `;
         tbody.appendChild(tr);
       });
+    // Update quick summary if present
+    if (document.getElementById('quickRunningTime')) {
+      updateQuickSummary();
+    }
+    // Update insights card if present
+    if (document.getElementById('avgShift')) {
+      updateInsights();
+    }
+    // Update quick start buttons state
+    if (typeof updateQuickButtons === 'function') {
+      updateQuickButtons();
+    }
   }
 
   // Event listeners
@@ -580,7 +568,7 @@
     rangeBtn.addEventListener('click', computeRangeSummary);
   }
 
-  // Delegated delete/edit handler for dynamic buttons
+  // Delegated delete and edit handler for dynamic buttons
   document
     .querySelector('#entriesTable tbody')
     .addEventListener('click', (e) => {
@@ -596,6 +584,118 @@
         editEntry(index);
       }
     });
+
+  /* ====================
+     Quick Start and Idle Detection
+     ==================== */
+  // Quick start buttons
+  const quickStartBtn = document.getElementById('quickStartBtn');
+  const quickStopBtn = document.getElementById('quickStopBtn');
+  function updateQuickButtons() {
+    if (!quickStartBtn || !quickStopBtn) return;
+    // If a shift is running, disable start and enable stop
+    quickStartBtn.disabled = currentShift !== null;
+    quickStopBtn.disabled = currentShift === null;
+  }
+  if (quickStartBtn && quickStopBtn) {
+    quickStartBtn.addEventListener('click', () => {
+      startShift();
+      updateQuickButtons();
+    });
+    quickStopBtn.addEventListener('click', () => {
+      stopShift();
+      updateQuickButtons();
+    });
+  }
+
+  // Update quick summary display
+  function updateQuickSummary() {
+    const runningSpan = document.getElementById('quickRunningTime');
+    const grossSpan = document.getElementById('quickGrossPay');
+    if (runningSpan) {
+      runningSpan.textContent = document.getElementById('runningTime').textContent;
+    }
+    if (grossSpan) {
+      grossSpan.textContent = document.getElementById('todayGrossPay').textContent;
+    }
+  }
+
+  // Insights update function
+  function updateInsights() {
+    // Average shift length
+    let totalMinutesSum = 0;
+    entries.forEach((e) => {
+      const tm = typeof e.totalMinutes === 'number' ? e.totalMinutes : (e.regMinutes + e.otMinutes);
+      totalMinutesSum += tm;
+    });
+    const avgShiftMins = entries.length ? totalMinutesSum / entries.length : 0;
+    // Average hours per day in last 7 days
+    const sevenDayStart = new Date();
+    sevenDayStart.setHours(0, 0, 0, 0);
+    sevenDayStart.setDate(sevenDayStart.getDate() - 6);
+    const dayTotals = {};
+    entries.forEach((e) => {
+      const d = new Date(e.start);
+      if (d >= sevenDayStart) {
+        const key = d.toISOString().substring(0, 10);
+        const tm = typeof e.totalMinutes === 'number' ? e.totalMinutes : (e.regMinutes + e.otMinutes);
+        dayTotals[key] = (dayTotals[key] || 0) + tm;
+      }
+    });
+    const dayCount = Object.keys(dayTotals).length;
+    const totalDayMinutes = Object.values(dayTotals).reduce((a, b) => a + b, 0);
+    const avgDayMinutes = dayCount ? totalDayMinutes / dayCount : 0;
+    // Top category by count
+    const categoryCounts = {};
+    entries.forEach((e) => {
+      if (e.category) {
+        categoryCounts[e.category] = (categoryCounts[e.category] || 0) + 1;
+      }
+    });
+    let topCategory = 'N/A';
+    let maxCount = 0;
+    for (const cat in categoryCounts) {
+      if (categoryCounts[cat] > maxCount) {
+        maxCount = categoryCounts[cat];
+        topCategory = cat;
+      }
+    }
+    // Update DOM
+    const avgShiftElem = document.getElementById('avgShift');
+    const avgHoursElem = document.getElementById('avgHours');
+    const topCatElem = document.getElementById('topCategory');
+    if (avgShiftElem) avgShiftElem.textContent = formatMinutes(avgShiftMins);
+    if (avgHoursElem) avgHoursElem.textContent = formatMinutes(avgDayMinutes);
+    if (topCatElem) topCatElem.textContent = topCategory;
+  }
+
+  // Idle detection activity reset
+  function resetIdleTimer() {
+    lastActivityTime = Date.now();
+  }
+  ['mousemove', 'keydown', 'touchstart'].forEach((evt) => {
+    document.addEventListener(evt, resetIdleTimer);
+  });
+  // Idle detection timer
+  setInterval(() => {
+    if (idleDetectionEnabled && currentShift) {
+      const idleSecs = (Date.now() - lastActivityTime) / 1000;
+      if (idleSecs >= idleTimeoutSecs) {
+        stopShift();
+        alert('Shift paused due to inactivity.');
+      }
+    }
+  }, 60000);
+
+  // Idle detection toggle
+  const idleToggleElem = document.getElementById('idleToggle');
+  if (idleToggleElem) {
+    idleToggleElem.checked = idleDetectionEnabled;
+    idleToggleElem.addEventListener('change', (e) => {
+      idleDetectionEnabled = e.target.checked;
+      localStorage.setItem('idleDetectionEnabled', idleDetectionEnabled);
+    });
+  }
 
   // Initialize default dates
   function initDates() {
@@ -615,6 +715,9 @@
     document.getElementById('rateOvertime').value = overtimeRate;
     document.getElementById('rateWeekdayCallout').value = weekdayCalloutRate;
     document.getElementById('rateWeekendCallout').value = weekendCalloutRate;
+    // Idle toggle
+    const idleElem = document.getElementById('idleToggle');
+    if (idleElem) idleElem.checked = idleDetectionEnabled;
   }
 
   // Initialize app
@@ -627,6 +730,16 @@
     updateUI();
     // Update date header every minute
     setInterval(updateTodayDate, 60000);
+    // Update quick start and insights on init
+    if (typeof updateQuickButtons === 'function') {
+      updateQuickButtons();
+    }
+    if (typeof updateQuickSummary === 'function') {
+      updateQuickSummary();
+    }
+    if (typeof updateInsights === 'function') {
+      updateInsights();
+    }
   }
 
   init();
