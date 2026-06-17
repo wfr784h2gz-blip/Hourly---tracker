@@ -1,54 +1,47 @@
-const CACHE_NAME = 'hourly-tracker-20260617-4';
-const ASSETS = [
+const cacheName = 'hourly-tracker-v4';
+const filesToCache = [
   './',
-  './index.html',
-  './style.css?v=20260617-4',
-  './script.js?v=20260617-4',
-  './manifest.json?v=20260617-4',
-  './icon.svg'
+  'index.html',
+  'style.css',
+  'script.js',
+  'manifest.json',
+  'icon.svg'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((key) => key === CACHE_NAME ? null : caches.delete(key))))
-      .then(() => self.clients.claim())
+self.addEventListener('install', (evt) => {
+  evt.waitUntil(
+    caches.open(cacheName).then((cache) => {
+      return cache.addAll(filesToCache);
+    })
   );
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+self.addEventListener('activate', (evt) => {
+  evt.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== cacheName) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) return;
-
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
-          return response;
+self.addEventListener('fetch', (evt) => {
+  evt.respondWith(
+    caches.match(evt.request).then((response) => {
+      return (
+        response ||
+        fetch(evt.request).catch(() => {
+          // If offline and request is for navigation, serve cached index.html
+          if (evt.request.mode === 'navigate') {
+            return caches.match('index.html');
+          }
         })
-        .catch(() => caches.match('./index.html').then((cached) => cached || caches.match('./')))
-    );
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+      );
+    })
   );
 });
