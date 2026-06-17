@@ -1,30 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>ServiceNow Employee Time Tracker</title>
-    <!-- Redirect to the dark_hourly_tracker application. Using a meta refresh ensures GitHub Pages serves the enhanced app -->
-    <meta http-equiv="refresh" content="0; url=./dark_hourly_tracker/index.html" />
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background: #04132a;
-        color: #e6f1ff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        margin: 0;
-      }
-      a {
-        color: #1f77d4;
-      }
-    </style>
-  </head>
-  <body>
-    <div>
-      <p>Redirecting to the new ServiceNow Employee Time Tracker…</p>
-      <p>If you are not automatically redirected, <a href="dark_hourly_tracker/index.html">click here</a>.</p>
-    </div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hourly Tracker Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Dashboard</h1>
+      <p class="tagline">Track your hours, overtime, call‑outs and commissions</p>
+      <p class="status" id="liveDate"></p>
+    </header>
+
+    <main>
+      <!-- Time tracking card -->
+      <section class="card" id="timeTrackerCard">
+        <h2>Time Tracker</h2>
+        <div class="times">
+          <div class="time-field">
+            <label>Start Time</label>
+            <input type="text" id="startTimeDisplay" readonly>
+          </div>
+          <div class="time-field">
+            <label>End Time</label>
+            <input type="text" id="endTimeDisplay" readonly>
+          </div>
+        </div>
+        <div class="time-summary">
+          <div class="summary-item"><span>Regular Hours</span><strong id="runningRegular">0h 0m</strong></div>
+          <div class="summary-item"><span>Overtime</span><strong id="runningOvertime">0h 0m</strong></div>
+        </div>
+        <div class="button-row">
+          <button class="btn start" id="startShiftBtn">Start</button>
+          <button class="btn stop" id="stopShiftBtn" disabled>Stop</button>
+        </div>
+      </section>
+
+      <!-- Today's summary card -->
+      <section class="card" id="summaryCard">
+        <h2>Today's Summary</h2>
+        <div class="summary-grid">
+          <div class="stat"><span>Regular Hours</span><strong id="todayReg">0h 0m</strong></div>
+          <div class="stat"><span>Overtime Hours</span><strong id="todayOT">0h 0m</strong></div>
+          <div class="stat"><span>Total Hours</span><strong id="todayTotalHours">0h 0m</strong></div>
+          <div class="stat"><span>Regular Pay</span><strong id="todayRegPay">$0.00</strong></div>
+          <div class="stat"><span>Overtime Pay</span><strong id="todayOTPay">$0.00</strong></div>
+          <div class="stat"><span>Commission</span><strong id="todayCommission">$0.00</strong></div>
+          <div class="stat highlight"><span>Total Pay (hours + call‑out + commission)</span><strong id="todayTotalPay">$0.00</strong></div>
+        </div>
+      </section>
+
+      <!-- Call‑out tracker card -->
+      <section class="card" id="calloutCard">
+        <h2>Call‑Out Tracker</h2>
+        <p class="muted">Track call‑out pay (separate from hours)</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="calloutType">Type</label>
+            <select id="calloutType">
+              <option value="weekday">Weekday</option>
+              <option value="weekend">Weekend</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="calloutDate">Date</label>
+            <input type="date" id="calloutDate">
+          </div>
+          <div class="wide callout-display">
+            <strong id="calloutAmount">$25.00</strong>
+            <span id="calloutDesc">Weekday Call‑Out</span>
+          </div>
+          <div class="wide">
+            <button class="btn primary" id="addCalloutBtn">+ Add Call‑Out</button>
+          </div>
+        </div>
+        <div class="summary-grid callout-summary">
+          <div class="stat"><span>Weekday Call‑Out</span><strong id="weekdayTotal">$0.00</strong></div>
+          <div class="stat"><span>Weekend Call‑Out</span><strong id="weekendTotal">$0.00</strong></div>
+          <div class="stat"><span>Commission</span><strong id="commissionTotal">$0.00</strong></div>
+          <div class="stat"><span>Total</span><strong id="calloutCommissionTotal">$0.00</strong></div>
+        </div>
+      </section>
+
+      <!-- Commission tracker card -->
+      <section class="card" id="commissionCard">
+        <h2>Add Commission</h2>
+        <p class="muted">Record additional commission earnings</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="commissionAmount">Amount ($)</label>
+            <input type="number" id="commissionAmount" step="0.01" min="0">
+          </div>
+          <div class="field">
+            <label for="commissionDate">Date</label>
+            <input type="date" id="commissionDate">
+          </div>
+          <div class="wide">
+            <button class="btn primary" id="addCommissionBtn">+ Add Commission</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent entries card -->
+      <section class="card entries-card" id="entriesCard">
+        <h2>Recent Entries</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Duration</th>
+              <th>Overtime</th>
+              <th>Pay</th>
+              <th>Call‑Out</th>
+              <th>Commission</th>
+              <th>Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
 </html>
