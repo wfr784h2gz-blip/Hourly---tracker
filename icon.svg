@@ -1,12 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ServiceNow Employee Tracker">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#81b5a1"/>
-      <stop offset="1" stop-color="#293e40"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="118" fill="#293e40"/>
-  <circle cx="256" cy="256" r="174" fill="url(#g)"/>
-  <path d="M256 126v136l94 58" fill="none" stroke="#fff" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="256" y="428" text-anchor="middle" font-family="Arial, sans-serif" font-size="70" font-weight="900" fill="#fff">SN</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 96 96"
+  width="96"
+  height="96"
+>
+  <!-- Background rounded square -->
+  <rect
+    x="0"
+    y="0"
+    width="96"
+    height="96"
+    rx="16"
+    ry="16"
+    fill="#131e25"
+  />
+  <!-- Letters SN for Service Now -->
+  <text
+    x="48"
+    y="62"
+    text-anchor="middle"
+    font-size="54"
+    font-family="Arial, Helvetica, sans-serif"
+    fill="#e1a800"
+    font-weight="700"
+  >
+    SN
+  </text>
 </svg>
