@@ -10,6 +10,7 @@
   --accent-orange: #e98a15;
   --accent-green: #2fbf6e;
   --accent-red: #d03f3f;
+  --accent-cyan: #54c6eb;
   --money-green: #3ac77b;
   --money-orange: #e47c54;
   --money-total: #1dd1a1;
@@ -87,7 +88,18 @@ body {
 }
 .nav li .icon {
   margin-right: 10px;
-  font-size: 1.1rem;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(84, 198, 235, 0.28);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  flex: 0 0 28px;
 }
 .nav li.active,
 .nav li:hover {
@@ -353,6 +365,10 @@ body {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 12px;
+  min-width: 840px;
+}
+.entries-card {
+  overflow-x: auto;
 }
 .entries-card th,
 .entries-card td {
@@ -391,7 +407,6 @@ body {
   }
   .nav li .icon {
     margin-right: 0;
-    font-size: 1.2rem;
   }
   .brand h1,
   .tagline,
@@ -406,6 +421,29 @@ body {
   .grid {
     grid-template-columns: 1fr;
   }
+  .top-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .tracker-card .inputs,
+  .callout-card .callout-fields,
+  .commission-card .commission-fields,
+  .report-controls {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .calendar-grid {
+    gap: 5px;
+  }
+  .calendar-cell {
+    min-height: 76px;
+    padding: 7px;
+  }
+  .calendar-cell span:not(.calendar-day),
+  .calendar-cell small {
+    font-size: 0.66rem;
+  }
 }
 /* Sections are hidden by default except active */
 .section {
@@ -419,6 +457,10 @@ body {
   width: 100%;
   border-collapse: collapse;
   margin-top: 15px;
+  min-width: 840px;
+}
+#timeEntriesSection {
+  overflow-x: auto;
 }
 .full-table th,
 .full-table td {
@@ -500,7 +542,78 @@ body {
 .report-controls .btn {
   margin-top: 5px;
 }
+.empty-cell {
+  color: var(--text-secondary);
+  padding: 18px 10px !important;
+  text-align: center !important;
+}
+.calendar-toolbar {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) 1fr minmax(92px, auto);
+  gap: 12px;
+  align-items: center;
+  margin: 20px 0 14px;
+}
+.calendar-toolbar strong {
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.calendar-head {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+.calendar-cell {
+  min-height: 92px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius);
+  background: #031c3d;
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+.calendar-cell.has-entry {
+  background: linear-gradient(180deg, rgba(31, 119, 212, 0.22), rgba(3, 28, 61, 0.98));
+  border-color: rgba(84, 198, 235, 0.48);
+  color: var(--text-primary);
+}
+.calendar-day {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+.calendar-cell span:not(.calendar-day),
+.calendar-cell small {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+.muted-cell {
+  opacity: 0.35;
+}
 /* Title update when nav clicked */
 #mainTitle {
   transition: color 0.3s;
+}
+@media (max-width: 768px) {
+  .calendar-grid {
+    gap: 5px;
+  }
+  .calendar-cell {
+    min-height: 76px;
+    padding: 7px;
+  }
+  .calendar-cell span:not(.calendar-day),
+  .calendar-cell small {
+    font-size: 0.66rem;
+  }
 }

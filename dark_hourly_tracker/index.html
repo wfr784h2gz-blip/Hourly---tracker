@@ -23,12 +23,12 @@
         </div>
         <nav class="nav">
           <ul id="navList">
-            <li class="active" data-target="dashboardSection"><span class="icon">📊</span>Dashboard</li>
-            <li data-target="timeEntriesSection"><span class="icon">🕒</span>Time Entries</li>
-            <li data-target="calloutSection"><span class="icon">📞</span>Call‑Out Tracker</li>
-            <li data-target="reportsSection"><span class="icon">📄</span>Reports</li>
-            <li data-target="calendarSection"><span class="icon">📅</span>Calendar</li>
-            <li data-target="settingsSection"><span class="icon">⚙️</span>Settings</li>
+            <li class="active" data-target="dashboardSection"><span class="icon">DB</span><span>Dashboard</span></li>
+            <li data-target="timeEntriesSection"><span class="icon">TE</span><span>Time Entries</span></li>
+            <li data-target="calloutSection"><span class="icon">CO</span><span>Call-Out Tracker</span></li>
+            <li data-target="reportsSection"><span class="icon">RP</span><span>Reports</span></li>
+            <li data-target="calendarSection"><span class="icon">CA</span><span>Calendar</span></li>
+            <li data-target="settingsSection"><span class="icon">ST</span><span>Settings</span></li>
           </ul>
         </nav>
         <div class="user-footer">
@@ -320,7 +320,13 @@
         <!-- Calendar section -->
         <div id="calendarSection" class="section" style="display:none;">
           <h3>Calendar</h3>
-          <p>This section will show your work and call‑out schedule. (Coming soon!)</p>
+          <p>Review recorded work, call-outs, and commission days by month.</p>
+          <div class="calendar-toolbar">
+            <button id="calendarPrev" class="btn transparent" type="button">Previous</button>
+            <strong id="calendarTitle"></strong>
+            <button id="calendarNext" class="btn transparent" type="button">Next</button>
+          </div>
+          <div id="calendarGrid" class="calendar-grid" aria-live="polite"></div>
         </div>
         <!-- Settings section -->
         <div id="settingsSection" class="section" style="display:none;">

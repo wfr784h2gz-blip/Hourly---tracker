@@ -186,8 +186,13 @@ const regularRateInput = document.getElementById('regularRate');
 const overtimeRateInput = document.getElementById('overtimeRate');
 const weekdayCalloutRateInput = document.getElementById('weekdayCalloutRate');
 const weekendCalloutRateInput = document.getElementById('weekendCalloutRate');
+const calendarTitle = document.getElementById('calendarTitle');
+const calendarGrid = document.getElementById('calendarGrid');
+const calendarPrev = document.getElementById('calendarPrev');
+const calendarNext = document.getElementById('calendarNext');
 // Chart instance variable
 let reportChart;
+let calendarDate = new Date();
 // Paycheck estimate DOM elements
 const paycheckHoursPayDisplay = document.getElementById('paycheckHoursPay');
 const paycheckCalloutPayDisplay = document.getElementById('paycheckCalloutPay');
@@ -229,6 +234,25 @@ function updatePaycheckEstimate() {
   paycheckTotalPayDisplay.textContent = `$${totalGrossPay.toFixed(2)}`;
 }
 
+function syncExtraTotalsFromEntries() {
+  weekdayCalloutTotal = 0;
+  weekendCalloutTotal = 0;
+  commissionsTotal = 0;
+  entries.forEach(entry => {
+    const calloutPay = Number(entry.calloutPay) || 0;
+    const commission = Number(entry.commission) || 0;
+    commissionsTotal += commission;
+    if (calloutPay > 0) {
+      const day = new Date(entry.date).getDay();
+      if (day === 0 || day === 6) {
+        weekendCalloutTotal += calloutPay;
+      } else {
+        weekdayCalloutTotal += calloutPay;
+      }
+    }
+  });
+}
+
 // Update the header date
 function updateCurrentDate() {
   const now = new Date();
@@ -239,6 +263,7 @@ updateCurrentDate();
 
 // Load persisted data and active start time
 loadData();
+syncExtraTotalsFromEntries();
 
 // Apply settings to rate inputs when available
 function populateSettings() {
@@ -326,6 +351,12 @@ function updateTimeCalculation() {
 function renderEntries() {
   entriesBody.innerHTML = '';
   const recent = entries.slice(-5).reverse();
+  if (recent.length === 0) {
+    entriesBody.innerHTML = '<tr><td colspan="10" class="empty-cell">No entries yet. Start a timer or add a call-out to populate this table.</td></tr>';
+    renderAllEntries();
+    renderCalendar();
+    return;
+  }
   recent.forEach(entry => {
     const index = entries.indexOf(entry);
     const tr = document.createElement('tr');
@@ -349,6 +380,7 @@ function renderEntries() {
     entriesBody.appendChild(tr);
   });
   renderAllEntries();
+  renderCalendar();
 }
 
 // Render all entries in the Time Entries section
@@ -358,6 +390,10 @@ function renderAllEntries() {
   // Sort by date ascending
   const sorted = [...entries];
   sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (sorted.length === 0) {
+    allEntriesBody.innerHTML = '<tr><td colspan="10" class="empty-cell">No time entries have been saved yet.</td></tr>';
+    return;
+  }
   sorted.forEach(entry => {
     const idx = entries.indexOf(entry);
     const tr = document.createElement('tr');
@@ -405,6 +441,7 @@ if (calloutTypeClone) updateCalloutPreviewClone();
 
 // Update callout summary display
 function updateCalloutSummary() {
+  syncExtraTotalsFromEntries();
   weekdayTotalDisplay.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
   weekendTotalDisplay.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
   const totalCall = weekdayCalloutTotal + weekendCalloutTotal;
@@ -417,7 +454,7 @@ function updateCalloutSummary() {
   if (wt2) wt2.textContent = `$${weekdayCalloutTotal.toFixed(2)}`;
   if (wk2) wk2.textContent = `$${weekendCalloutTotal.toFixed(2)}`;
   if (ct2) ct2.textContent = `$${commissionsTotal.toFixed(2)}`;
-  if (tt2) tt2.textContent = `$${(weekdayCalloutTotal + weekendCalloutTotal).toFixed(2)}`;
+  if (tt2) tt2.textContent = `$${(weekdayCalloutTotal + weekendCalloutTotal + commissionsTotal).toFixed(2)}`;
   // Refresh paycheck estimate whenever callout totals change
   updatePaycheckEstimate();
 }
@@ -496,47 +533,46 @@ function addCallout(type, date) {
   saveData();
 }
 
+function addCalloutToEntries(type, date) {
+  const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
+  const dateStr = date || new Date().toLocaleDateString();
+  let entry;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].date === dateStr) {
+      entry = entries[i];
+      break;
+    }
+  }
+  if (entry) {
+    entry.calloutPay += amount;
+    entry.totalPay += amount;
+  } else {
+    entry = {
+      date: dateStr,
+      startTime: '--',
+      endTime: '--',
+      durationMs: 0,
+      overtimeMs: 0,
+      hoursPay: 0,
+      calloutPay: amount,
+      commission: 0,
+      totalPay: amount
+    };
+    entries.push(entry);
+  }
+  syncExtraTotalsFromEntries();
+  renderEntries();
+  updateSummaryForToday();
+  updateCalloutSummary();
+  saveData();
+}
+
 // Event listeners for callout button
 if (document.getElementById('addCalloutBtn')) {
   document.getElementById('addCalloutBtn').addEventListener('click', () => {
     const type = calloutTypeSelect.value;
-    const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
-    if (type === 'weekday') {
-      weekdayCalloutTotal += amount;
-    } else {
-      weekendCalloutTotal += amount;
-    }
-    updateCalloutSummary();
-    // Add callout to last entry or new entry based on date field
     const dateStr = calloutDateInput.value ? new Date(calloutDateInput.value).toLocaleDateString() : new Date().toLocaleDateString();
-    let entry;
-    // find last entry with same date
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].date === dateStr) {
-        entry = entries[i];
-        break;
-      }
-    }
-    if (entry) {
-      entry.calloutPay += amount;
-      entry.totalPay += amount;
-    } else {
-      entry = {
-        date: dateStr,
-        startTime: '--',
-        endTime: '--',
-        durationMs: 0,
-        overtimeMs: 0,
-        hoursPay: 0,
-        calloutPay: amount,
-        commission: 0,
-        totalPay: amount
-      };
-      entries.push(entry);
-    }
-    renderEntries();
-    updateSummaryForToday();
-    saveData();
+    addCalloutToEntries(type, dateStr);
   });
 }
 
@@ -603,42 +639,8 @@ if (document.getElementById('addCommissionBtnClone')) {
 if (document.getElementById('addCalloutBtnClone')) {
   document.getElementById('addCalloutBtnClone').addEventListener('click', () => {
     const type = calloutTypeClone.value;
-    const amount = type === 'weekday' ? settings.weekdayCalloutRate : settings.weekendCalloutRate;
-    if (type === 'weekday') {
-      weekdayCalloutTotal += amount;
-    } else {
-      weekendCalloutTotal += amount;
-    }
-    updateCalloutSummary();
-    // Add to last entry or new entry with date from clone field
     const dateStr = calloutDateClone.value ? new Date(calloutDateClone.value).toLocaleDateString() : new Date().toLocaleDateString();
-    let entry;
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].date === dateStr) {
-        entry = entries[i];
-        break;
-      }
-    }
-    if (entry) {
-      entry.calloutPay += amount;
-      entry.totalPay += amount;
-    } else {
-      entry = {
-        date: dateStr,
-        startTime: '--',
-        endTime: '--',
-        durationMs: 0,
-        overtimeMs: 0,
-        hoursPay: 0,
-        calloutPay: amount,
-        commission: 0,
-        totalPay: amount
-      };
-      entries.push(entry);
-    }
-    renderEntries();
-    updateSummaryForToday();
-    saveData();
+    addCalloutToEntries(type, dateStr);
   });
 }
 
@@ -679,7 +681,8 @@ function showSection(id) {
       break;
     case 'calendarSection':
       title.textContent = 'Calendar';
-      subtitle.textContent = 'View your schedule';
+      subtitle.textContent = 'Review saved work by month';
+      renderCalendar();
       break;
     case 'settingsSection':
       title.textContent = 'Settings';
@@ -724,6 +727,7 @@ function deleteEntry(idx) {
   if (idx == null || idx < 0 || idx >= entries.length) return;
   // Remove entry from array
   entries.splice(idx, 1);
+  syncExtraTotalsFromEntries();
   saveData();
   // Refresh summaries and lists
   updateSummaryForToday();
@@ -731,6 +735,60 @@ function deleteEntry(idx) {
   renderEntries();
   // Refresh paycheck estimate
   updatePaycheckEstimate();
+  renderCalendar();
+}
+
+function renderCalendar() {
+  if (!calendarTitle || !calendarGrid) return;
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  const monthName = calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  calendarTitle.textContent = monthName;
+  calendarGrid.innerHTML = '';
+
+  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+    const cell = document.createElement('div');
+    cell.className = 'calendar-head';
+    cell.textContent = day;
+    calendarGrid.appendChild(cell);
+  });
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let i = 0; i < firstDay; i++) {
+    const spacer = document.createElement('div');
+    spacer.className = 'calendar-cell muted-cell';
+    calendarGrid.appendChild(spacer);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const key = date.toLocaleDateString();
+    const dayEntries = entries.filter(entry => entry.date === key);
+    const hours = dayEntries.reduce((sum, entry) => sum + (entry.durationMs || 0), 0);
+    const extras = dayEntries.reduce((sum, entry) => sum + (entry.calloutPay || 0) + (entry.commission || 0), 0);
+    const pay = dayEntries.reduce((sum, entry) => sum + (entry.totalPay || 0), 0);
+    const cell = document.createElement('div');
+    cell.className = `calendar-cell${dayEntries.length ? ' has-entry' : ''}`;
+    cell.innerHTML = `
+      <span class="calendar-day">${day}</span>
+      ${dayEntries.length ? `<span>${formatDuration(hours)}</span><span>$${pay.toFixed(2)}</span>${extras ? '<small>Extras logged</small>' : ''}` : ''}
+    `;
+    calendarGrid.appendChild(cell);
+  }
+}
+
+if (calendarPrev) {
+  calendarPrev.addEventListener('click', () => {
+    calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1);
+    renderCalendar();
+  });
+}
+if (calendarNext) {
+  calendarNext.addEventListener('click', () => {
+    calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
+    renderCalendar();
+  });
 }
 
 // Report generation
@@ -851,6 +909,8 @@ if (document.getElementById('saveSettingsBtn')) {
     settings.weekdayCalloutRate = parseFloat(weekdayCalloutRateInput.value) || settings.weekdayCalloutRate;
     settings.weekendCalloutRate = parseFloat(weekendCalloutRateInput.value) || settings.weekendCalloutRate;
     saveData();
+    updateCalloutPreview();
+    updateCalloutPreviewClone();
     alert('Settings saved');
   });
 }
