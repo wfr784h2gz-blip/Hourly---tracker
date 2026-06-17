@@ -5,9 +5,7 @@ const ASSETS = [
   "style.css",
   "script.js",
   "manifest.json",
-  "icon.svg",
-  "https://www.gstatic.com/firebasejs/10.11.1/firebase-app-compat.js",
-  "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore-compat.js"
+  "icon.svg"
 ];
 
 self.addEventListener("install", event => {
