@@ -258,6 +258,32 @@ tbody tr:last-child td {
   font-size: 0.95rem;
 }
 
+/* Quick View toggle styling */
+.quick-view-toggle {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Suggested category text */
+.suggestion {
+  font-size: 0.75rem;
+  color: var(--primary);
+  margin-top: -0.25rem;
+  margin-bottom: 0.5rem;
+  text-align: right;
+}
+
+/* Quick view mode hides all cards except Quick Start and summary */
+body.quick-view .container .card:not(#quickStart):not(#summary) {
+  display: none;
+}
+/* Ensure summary remains visible in quick view */
+body.quick-view #summary {
+  display: block;
+}
+
 @media (min-width: 600px) {
   .container {
     display: grid;
