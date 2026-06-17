@@ -239,13 +239,6 @@
     document.getElementById('estResult').textContent = formatCurrency(gross);
   }
 
-  // Delete entry by index
-  function deleteEntry(index) {
-    entries.splice(index, 1);
-    localStorage.setItem('entries', JSON.stringify(entries));
-    updateUI();
-  }
-
   // Add a manual entry with custom times, call‑out, commission, category and notes
   function addManualEntry() {
     const dateVal = document.getElementById('manualDate').value;
@@ -299,11 +292,11 @@
       document.getElementById('manualCommission').value
     );
     if (!isNaN(commissionVal) && commissionVal > 0) {
-      const commission = {
+      const commissionObj = {
         date: startDate.toISOString(),
         amount: commissionVal,
       };
-      commissions.push(commission);
+      commissions.push(commissionObj);
       localStorage.setItem('commissions', JSON.stringify(commissions));
     }
     // Reset form fields
@@ -414,6 +407,51 @@
     document.getElementById('rangeGross').textContent = formatCurrency(gross);
   }
 
+  // Delete entry by index
+  function deleteEntry(index) {
+    entries.splice(index, 1);
+    localStorage.setItem('entries', JSON.stringify(entries));
+    updateUI();
+  }
+
+  // Edit entry by index: prefill manual entry form and remove the entry
+  function editEntry(index) {
+    const entry = entries[index];
+    if (!entry) return;
+    // Prefill manual entry fields with existing entry data
+    const startDate = new Date(entry.start);
+    const endDate = new Date(entry.end);
+    const dateStr = startDate.toISOString().substring(0, 10);
+    const startTime = startDate.toTimeString().substring(0, 5);
+    const endTime = endDate.toTimeString().substring(0, 5);
+    const manualDate = document.getElementById('manualDate');
+    const manualStart = document.getElementById('manualStart');
+    const manualEnd = document.getElementById('manualEnd');
+    const manualCategory = document.getElementById('manualCategory');
+    const manualNotes = document.getElementById('manualNotes');
+    const manualCallout = document.getElementById('manualCallout');
+    const manualCommission = document.getElementById('manualCommission');
+    if (manualDate && manualStart && manualEnd) {
+      manualDate.value = dateStr;
+      manualStart.value = startTime;
+      manualEnd.value = endTime;
+      if (manualCategory) manualCategory.value = entry.category || '';
+      if (manualNotes) manualNotes.value = entry.notes || '';
+      // For editing, reset call‑out and commission fields
+      if (manualCallout) manualCallout.value = '';
+      if (manualCommission) manualCommission.value = '';
+    }
+    // Remove the entry and update storage
+    entries.splice(index, 1);
+    localStorage.setItem('entries', JSON.stringify(entries));
+    updateUI();
+    // Scroll to manual entry card for convenience if exists
+    const manualCard = document.getElementById('manualEntry');
+    if (manualCard && manualCard.scrollIntoView) {
+      manualCard.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
   // Update UI summary and table
   function updateUI() {
     // Today & week summary variables
@@ -513,6 +551,7 @@
           <td>${formatCurrency(entry.pay)}</td>
           <td>${entry.category || ''}</td>
           <td>${entry.notes || ''}</td>
+          <td><button class="edit-btn" data-index="${displayIndex}">Edit</button></td>
           <td><button class="delete-btn" data-index="${displayIndex}">Delete</button></td>
         `;
         tbody.appendChild(tr);
@@ -541,13 +580,20 @@
     rangeBtn.addEventListener('click', computeRangeSummary);
   }
 
-  // Delegated delete handler for dynamic buttons
+  // Delegated delete/edit handler for dynamic buttons
   document
     .querySelector('#entriesTable tbody')
     .addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        const index = parseInt(e.target.getAttribute('data-index'), 10);
+      const target = e.target;
+      // Delete button
+      if (target.classList.contains('delete-btn')) {
+        const index = parseInt(target.getAttribute('data-index'), 10);
         deleteEntry(index);
+      }
+      // Edit button
+      if (target.classList.contains('edit-btn')) {
+        const index = parseInt(target.getAttribute('data-index'), 10);
+        editEntry(index);
       }
     });
 
