@@ -220,6 +220,18 @@ tbody tr:last-child td {
   font-size: 0.8rem;
 }
 
+/* Edit button styling */
+.edit-btn {
+  background-color: var(--primary);
+  border: none;
+  color: var(--bg-color);
+  border-radius: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+}
+
 .result {
   margin-top: 0.5rem;
   font-size: 0.95rem;
