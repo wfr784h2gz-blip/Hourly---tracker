@@ -232,6 +232,27 @@ tbody tr:last-child td {
   margin-right: 0.3rem;
 }
 
+/* Quick Start card styling */
+.quick-card {
+  text-align: center;
+}
+.quick-card .button-row {
+  justify-content: center;
+  gap: 1rem;
+}
+.large-btn {
+  font-size: 1.3rem;
+  padding: 0.8rem 1.5rem;
+}
+.quick-card .summary-list span {
+  font-size: 1.1rem;
+}
+
+/* Insights card styling */
+#insights .summary-list span {
+  font-size: 0.95rem;
+}
+
 .result {
   margin-top: 0.5rem;
   font-size: 0.95rem;
