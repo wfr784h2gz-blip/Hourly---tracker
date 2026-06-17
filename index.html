@@ -22,6 +22,10 @@
         <span class="subtitle">developed by Hansel</span>
       </h1>
       <p id="todayDate" class="date"></p>
+    <!-- Quick View toggle to show only essentials on mobile -->
+    <div class="quick-view-toggle">
+      <label><input type="checkbox" id="quickViewToggle" /> Quick View</label>
+    </div>
     </header>
     <main class="container">
       <!-- Quick Start card -->
@@ -222,6 +226,8 @@
           <label for="manualCategory">Category:</label>
           <input type="text" id="manualCategory" placeholder="e.g. maintenance" />
         </div>
+        <!-- Suggested category from AI heuristics will appear here -->
+        <p id="suggestedCategory" class="suggestion"></p>
         <div class="form-row">
           <label for="manualNotes">Notes:</label>
           <input type="text" id="manualNotes" />
