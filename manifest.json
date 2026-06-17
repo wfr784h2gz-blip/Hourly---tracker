@@ -1,7 +1,7 @@
 {
-  "name": "Hourly Tracker Dark",
-  "short_name": "HourlyTracker",
-  "start_url": "./",
+  "name": "ServiceNow Employees Time",
+  "short_name": "HourlyTime",
+  "start_url": "./?v=20260617-3",
   "display": "standalone",
   "background_color": "#04132a",
   "theme_color": "#04132a",
