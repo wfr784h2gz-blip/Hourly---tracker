@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#04132a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hourly Tracker">
   <title>Hourly Tracker Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json?v=20260617-4">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css?v=20260617-4">
 </head>
 <body>
   <div class="container">
@@ -12,29 +19,38 @@
       <h1>Dashboard</h1>
       <p class="tagline">Track your hours, overtime, call‑outs and commissions</p>
       <p class="status" id="liveDate"></p>
+      <p class="status" id="appVersion"></p>
     </header>
 
     <main>
       <!-- Time tracking card -->
       <section class="card" id="timeTrackerCard">
         <h2>Time Tracker</h2>
+        <p class="muted" id="shiftStatus">Not running</p>
         <div class="times">
           <div class="time-field">
             <label>Start Time</label>
             <input type="text" id="startTimeDisplay" readonly>
           </div>
           <div class="time-field">
-            <label>End Time</label>
+            <label>End / Current Time</label>
             <input type="text" id="endTimeDisplay" readonly>
           </div>
         </div>
         <div class="time-summary">
           <div class="summary-item"><span>Regular Hours</span><strong id="runningRegular">0h 0m</strong></div>
           <div class="summary-item"><span>Overtime</span><strong id="runningOvertime">0h 0m</strong></div>
+          <div class="summary-item"><span>Running Pay</span><strong id="runningPay">$0.00</strong></div>
+        </div>
+        <div class="form-grid manual-out-grid">
+          <div class="field wide">
+            <label for="manualEndTime">Optional out time override</label>
+            <input type="datetime-local" id="manualEndTime">
+          </div>
         </div>
         <div class="button-row">
           <button class="btn start" id="startShiftBtn">Start</button>
-          <button class="btn stop" id="stopShiftBtn" disabled>Stop</button>
+          <button class="btn stop" id="stopShiftBtn" disabled>Stop / Save</button>
         </div>
       </section>
 
@@ -129,6 +145,6 @@
       </section>
     </main>
   </div>
-  <script src="script.js"></script>
+  <script src="script.js?v=20260617-4"></script>
 </body>
 </html>
