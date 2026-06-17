@@ -93,6 +93,9 @@
   const estimateBtn = document.getElementById('estimateBtn');
   const estimatorResultEl = document.getElementById('estimatorResult');
 
+  // Pay frequency dropdown for estimator
+  const estimatorFrequencySelect = document.getElementById('estimatorFrequency');
+
   // Helpers
   function formatTime(min) {
     const hours = Math.floor(min / 60);
@@ -316,7 +319,7 @@
       if (labelOTPaySpan) {
         labelOTPaySpan.textContent = `Overtime Pay (@ $${OT_RATE}/hr)`;
       }
-      // Update call‑out display so user sees new default amount
+      // Update the call‑out display so user sees new default amount
       updateCalloutDisplay();
       // Recompute summary with new rates
       updateUI();
@@ -345,7 +348,7 @@
     });
   }
 
-  // Run report handler: displays summary for current period
+  // Run report handler: displays summary for current month or selected period
   if (runReportBtn) {
     runReportBtn.addEventListener('click', () => {
       const period = periodSelect.value;
@@ -395,7 +398,7 @@
     });
   }
 
-  // Estimate paycheck for custom hours
+  // Estimate paycheck for custom hours with pay frequency multiplier
   if (estimateBtn) {
     estimateBtn.addEventListener('click', () => {
       const regHours = parseFloat(estimatorRegHoursInput.value) || 0;
@@ -406,14 +409,30 @@
       const regPay = regHours * HOURLY_RATE;
       const otPay = otHours * OT_RATE;
       const coPay = (weekdayCOCount * calloutRates.weekday) + (weekendCOCount * calloutRates.weekend);
-      const gross = regPay + otPay + coPay + commissionVal;
+      // Determine multiplier based on selected pay frequency
+      let multiplier = 1;
+      if (estimatorFrequencySelect) {
+        const freq = estimatorFrequencySelect.value;
+        if (freq === 'biweekly') {
+          multiplier = 2;
+        } else if (freq === 'monthly') {
+          // Approximate monthly pay as 4 pay periods
+          multiplier = 4;
+        } else if (freq === 'weekly') {
+          multiplier = 1;
+        } else {
+          // perPeriod or unknown uses 1
+          multiplier = 1;
+        }
+      }
+      const gross = (regPay + otPay + coPay + commissionVal) * multiplier;
       if (estimatorResultEl) {
         estimatorResultEl.textContent = formatCurrency(gross);
       }
     });
   }
 
-  // Delete entry
+  // Delete entry from recent entries table
   entriesBody.addEventListener('click', (e) => {
     if (e.target.classList.contains('delete-btn')) {
       const idx = parseInt(e.target.getAttribute('data-index'));
@@ -439,7 +458,9 @@
         otMin += entry.overtimeMinutes;
       }
     });
+    // Re-read callouts from localStorage to ensure we use persisted data
     const storedCallouts = JSON.parse(localStorage.getItem('callouts') || '[]');
+    // Use ISO string comparison to avoid timezone issues
     const startISO = startRange.toISOString().split('T')[0];
     const endISO = endRange.toISOString().split('T')[0];
     storedCallouts.forEach((c) => {
@@ -455,6 +476,7 @@
     const regPay = (regMin / 60) * HOURLY_RATE;
     const otPay = (otMin / 60) * OT_RATE;
     const hoursPay = regPay + otPay;
+    // Calculate commission totals
     let commissionTotal = 0;
     commissions.forEach((c) => {
       if (c.date) {
@@ -463,6 +485,7 @@
         }
       }
     });
+    // Update summary elements
     periodRegHoursEl.textContent = formatTime(regMin);
     periodOTHoursEl.textContent = formatTime(otMin);
     periodTotalHoursEl.textContent = formatTime(regMin + otMin);
@@ -531,13 +554,18 @@
     updateCurrentDateLabel();
     updateCalloutDisplay();
     updateUI();
+    // initialize default callout date if empty
     const tzOffset = new Date().getTimezoneOffset() * 60000;
     const todayIso = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
     if (!calloutDateEl.value) calloutDateEl.value = todayIso;
+
+    // Populate pay settings inputs with current rates
     if (rateRegularInput) rateRegularInput.value = HOURLY_RATE;
     if (rateOvertimeInput) rateOvertimeInput.value = OT_RATE;
     if (rateWeekdayCalloutInput) rateWeekdayCalloutInput.value = calloutRates.weekday;
     if (rateWeekendCalloutInput) rateWeekendCalloutInput.value = calloutRates.weekend;
+
+    // Update labels in summary card to reflect current rates
     if (labelRegPaySpan) {
       labelRegPaySpan.textContent = `Regular Pay (@ $${HOURLY_RATE}/hr)`;
     }
