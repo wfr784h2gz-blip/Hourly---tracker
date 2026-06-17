@@ -18,12 +18,13 @@
     </div>
     <nav>
       <ul>
-        <li class="active">Dashboard</li>
-        <li>Time Entries</li>
-        <li>Call‑Out Tracker</li>
-        <li>Reports</li>
-        <li>Calendar</li>
-        <li>Settings</li>
+        <!-- Sidebar items now include simple icons for better UX on mobile. Each icon is an emoji for reliability offline. -->
+        <li class="active"><span class="icon">🏠</span> Dashboard</li>
+        <li><span class="icon">⏱️</span> Time Entries</li>
+        <li><span class="icon">💸</span> Call‑Out Tracker</li>
+        <li><span class="icon">📊</span> Reports</li>
+        <li><span class="icon">📅</span> Calendar</li>
+        <li><span class="icon">⚙️</span> Settings</li>
       </ul>
     </nav>
     <div class="user-info">
@@ -34,7 +35,8 @@
   <div class="main">
     <header class="topbar">
       <div class="title">
-        <h2 class="title-highlight">Service Now developed by Hansel</h2>
+        <!-- Highlight the "Service Now" name using a separate span so we can color it yellow via CSS -->
+        <h2 class="title-highlight"><span class="service-name">Service&nbsp;Now</span> developed by Hansel</h2>
         <p>Track your hours, overtime, and call‑out pay</p>
       </div>
       <div class="status-group">
@@ -193,6 +195,18 @@
           <div class="field">
             <label for="estimatorCommission">Commission ($)</label>
             <input type="number" id="estimatorCommission" min="0" step="0.01" placeholder="e.g., 50">
+          </div>
+
+          <!-- New: pay frequency selector for paycheck estimations -->
+          <div class="field">
+            <label for="estimatorFrequency">Pay Frequency</label>
+            <select id="estimatorFrequency">
+              <!-- "perPeriod" means compute pay exactly for the hours entered. -->
+              <option value="perPeriod" selected>Per Period</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Biweekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
           </div>
           <div class="button-row single">
             <button type="button" class="btn primary" id="estimateBtn">Estimate</button>
