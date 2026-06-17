@@ -1,24 +1,28 @@
 (() => {
-  // Constants
+  'use strict';
+
+  const APP_VERSION = '2026.06.17-4';
   const HOURLY_RATE = 32;
   const OT_RATE = 48;
   const DAILY_LIMIT_MIN = 8 * 60;
   const calloutRates = { weekday: 25, weekend: 50 };
+  const ACTIVE_SHIFT_KEY = 'activeStartTimestamp';
 
-  // Persistent state
-  let startTimestamp = null;
-  // Interval handle for live timer
+  let startTimestamp = Number(localStorage.getItem(ACTIVE_SHIFT_KEY)) || null;
   let liveTimerInterval = null;
-  let entries = JSON.parse(localStorage.getItem('entries') || '[]');
-  let callouts = JSON.parse(localStorage.getItem('callouts') || '[]');
-  let commissions = JSON.parse(localStorage.getItem('commissions') || '[]');
+  let entries = readArray('entries');
+  let callouts = readArray('callouts');
+  let commissions = readArray('commissions');
 
-  // DOM elements
   const liveDateEl = document.getElementById('liveDate');
+  const appVersionEl = document.getElementById('appVersion');
+  const shiftStatusEl = document.getElementById('shiftStatus');
   const startTimeDisplay = document.getElementById('startTimeDisplay');
   const endTimeDisplay = document.getElementById('endTimeDisplay');
+  const manualEndTimeEl = document.getElementById('manualEndTime');
   const runningRegularEl = document.getElementById('runningRegular');
   const runningOvertimeEl = document.getElementById('runningOvertime');
+  const runningPayEl = document.getElementById('runningPay');
   const startBtn = document.getElementById('startShiftBtn');
   const stopBtn = document.getElementById('stopShiftBtn');
 
@@ -44,106 +48,162 @@
   const weekendTotalEl = document.getElementById('weekendTotal');
   const commissionTotalEl = document.getElementById('commissionTotal');
   const calloutCommissionTotalEl = document.getElementById('calloutCommissionTotal');
-
-  // Weekly summary elements
   const weekHoursEl = document.getElementById('weekHours');
   const weekPayEl = document.getElementById('weekPay');
-
   const entriesBody = document.getElementById('entriesBody');
 
-  // Helpers
+  function readArray(key) {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveArray(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
   function formatTime(min) {
-    const hours = Math.floor(min / 60);
-    const minutes = Math.floor(min % 60);
+    const safeMin = Math.max(0, Math.floor(Number(min) || 0));
+    const hours = Math.floor(safeMin / 60);
+    const minutes = safeMin % 60;
     return `${hours}h ${minutes}m`;
   }
+
   function formatCurrency(num) {
-    return `$${num.toFixed(2)}`;
+    return `$${(Number(num) || 0).toFixed(2)}`;
   }
+
   function getToday() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
+
+  function getTodayIsoDate() {
+    const tzOffsetMs = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzOffsetMs).toISOString().split('T')[0];
+  }
+
+  function parseDateOnlyLocal(dateValue) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateValue))) return null;
+    const [year, month, day] = dateValue.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  function parseManualEnd() {
+    if (!manualEndTimeEl.value) return null;
+    const parsed = new Date(manualEndTimeEl.value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function displayClockTime(date) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   function updateLiveDate() {
     const today = new Date();
     const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
     liveDateEl.textContent = today.toLocaleDateString(undefined, options);
+    if (appVersionEl) appVersionEl.textContent = `Version ${APP_VERSION}`;
   }
 
-  // Time tracking handlers
-  startBtn.addEventListener('click', () => {
-    if (startTimestamp) return;
-    startTimestamp = Date.now();
-    const startDate = new Date(startTimestamp);
-    startTimeDisplay.value = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    endTimeDisplay.value = '';
-    runningRegularEl.textContent = '0h 0m';
-    runningOvertimeEl.textContent = '0h 0m';
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-    // ensure callout/commission dates default to today
-    const tzOffsetMs = new Date().getTimezoneOffset() * 60000;
-    const todayIso = new Date(Date.now() - tzOffsetMs).toISOString().split('T')[0];
-    if (!calloutDateEl.value) calloutDateEl.value = todayIso;
-    if (!commissionDateEl.value) commissionDateEl.value = todayIso;
-    // Start live timer interval to update running regular and overtime time
-    if (liveTimerInterval) {
-      clearInterval(liveTimerInterval);
-    }
-    liveTimerInterval = setInterval(() => {
-      if (!startTimestamp) return;
-      const now = Date.now();
-      const totalMinutes = Math.floor((now - startTimestamp) / 60000);
-      const regMin = Math.min(totalMinutes, DAILY_LIMIT_MIN);
-      const otMin = Math.max(0, totalMinutes - DAILY_LIMIT_MIN);
-      runningRegularEl.textContent = formatTime(regMin);
-      runningOvertimeEl.textContent = formatTime(otMin);
-      // Also update end time display to show approximate current time
-      const nowDate = new Date(now);
-      endTimeDisplay.value = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }, 1000);
-  });
-
-  stopBtn.addEventListener('click', () => {
-    if (!startTimestamp) return;
-    const endTimestamp = Date.now();
-    const startDate = new Date(startTimestamp);
-    const endDate = new Date(endTimestamp);
-    const totalMinutes = Math.floor((endTimestamp - startTimestamp) / 60000);
+  function calculateShift(startMs, endMs) {
+    const totalMinutes = Math.max(0, Math.floor((endMs - startMs) / 60000));
     const regMin = Math.min(totalMinutes, DAILY_LIMIT_MIN);
     const otMin = Math.max(0, totalMinutes - DAILY_LIMIT_MIN);
     const regPay = (regMin / 60) * HOURLY_RATE;
     const otPay = (otMin / 60) * OT_RATE;
-    const entry = {
+    return { totalMinutes, regMin, otMin, regPay, otPay };
+  }
+
+  function updateRunningDisplay() {
+    if (!startTimestamp) {
+      startTimeDisplay.value = '';
+      endTimeDisplay.value = '';
+      runningRegularEl.textContent = '0h 0m';
+      runningOvertimeEl.textContent = '0h 0m';
+      if (runningPayEl) runningPayEl.textContent = '$0.00';
+      if (shiftStatusEl) shiftStatusEl.textContent = 'Not running';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      return;
+    }
+
+    const now = Date.now();
+    const startDate = new Date(startTimestamp);
+    const running = calculateShift(startTimestamp, now);
+    startTimeDisplay.value = displayClockTime(startDate);
+    endTimeDisplay.value = displayClockTime(new Date(now));
+    runningRegularEl.textContent = formatTime(running.regMin);
+    runningOvertimeEl.textContent = formatTime(running.otMin);
+    if (runningPayEl) runningPayEl.textContent = formatCurrency(running.regPay + running.otPay);
+    if (shiftStatusEl) shiftStatusEl.textContent = `Running since ${displayClockTime(startDate)}. Safe to close and reopen.`;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  }
+
+  function startLiveTimer() {
+    if (liveTimerInterval) clearInterval(liveTimerInterval);
+    updateRunningDisplay();
+    liveTimerInterval = setInterval(updateRunningDisplay, 1000);
+  }
+
+  function stopLiveTimer() {
+    if (liveTimerInterval) clearInterval(liveTimerInterval);
+    liveTimerInterval = null;
+  }
+
+  function startShift() {
+    if (startTimestamp) return;
+    startTimestamp = Date.now();
+    localStorage.setItem(ACTIVE_SHIFT_KEY, String(startTimestamp));
+    manualEndTimeEl.value = '';
+    if (!calloutDateEl.value) calloutDateEl.value = getTodayIsoDate();
+    if (!commissionDateEl.value) commissionDateEl.value = getTodayIsoDate();
+    startLiveTimer();
+  }
+
+  function stopShift() {
+    if (!startTimestamp) return;
+    const manualEnd = parseManualEnd();
+    const endTimestamp = manualEnd ? manualEnd.getTime() : Date.now();
+    if (endTimestamp <= startTimestamp) {
+      alert('Out time must be after the start time.');
+      return;
+    }
+
+    const startDate = new Date(startTimestamp);
+    const endDate = new Date(endTimestamp);
+    const shift = calculateShift(startTimestamp, endTimestamp);
+    entries.push({
       date: startDate.toISOString(),
-      start: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      end: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      totalMinutes: totalMinutes,
-      overtimeMinutes: otMin,
-      hoursPay: regPay + otPay,
+      start: displayClockTime(startDate),
+      end: displayClockTime(endDate),
+      totalMinutes: shift.totalMinutes,
+      overtimeMinutes: shift.otMin,
+      hoursPay: shift.regPay + shift.otPay,
       calloutPay: 0,
       commission: 0,
-      totalPay: regPay + otPay
-    };
-    entries.push(entry);
-    localStorage.setItem('entries', JSON.stringify(entries));
-    // reset running state
+      totalPay: shift.regPay + shift.otPay
+    });
+    saveArray('entries', entries);
+
     startTimestamp = null;
-    // clear the live timer interval
-    if (liveTimerInterval) {
-      clearInterval(liveTimerInterval);
-      liveTimerInterval = null;
-    }
-    startTimeDisplay.value = '';
-    endTimeDisplay.value = '';
-    runningRegularEl.textContent = '0h 0m';
-    runningOvertimeEl.textContent = '0h 0m';
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+    localStorage.removeItem(ACTIVE_SHIFT_KEY);
+    manualEndTimeEl.value = '';
+    stopLiveTimer();
+    updateRunningDisplay();
     updateUI();
+  }
+
+  startBtn.addEventListener('click', startShift);
+  stopBtn.addEventListener('click', stopShift);
+  manualEndTimeEl.addEventListener('change', () => {
+    if (startTimestamp) updateRunningDisplay();
   });
 
-  // Call‑out display
   function updateCalloutDisplay() {
     const type = calloutTypeEl.value;
     const amount = calloutRates[type] || 0;
@@ -152,7 +212,6 @@
   }
   calloutTypeEl.addEventListener('change', updateCalloutDisplay);
 
-  // Add call‑out
   addCalloutBtn.addEventListener('click', () => {
     const type = calloutTypeEl.value;
     const dateVal = calloutDateEl.value;
@@ -162,11 +221,10 @@
     }
     const amount = calloutRates[type] || 0;
     callouts.push({ type, date: dateVal, amount });
-    localStorage.setItem('callouts', JSON.stringify(callouts));
+    saveArray('callouts', callouts);
     updateUI();
   });
 
-  // Add commission
   addCommissionBtn.addEventListener('click', () => {
     const amount = parseFloat(commissionAmountEl.value);
     const dateVal = commissionDateEl.value;
@@ -175,26 +233,29 @@
       return;
     }
     commissions.push({ amount, date: dateVal });
-    localStorage.setItem('commissions', JSON.stringify(commissions));
+    saveArray('commissions', commissions);
     commissionAmountEl.value = '';
     updateUI();
   });
 
-  // Delete entry handler using event delegation
   entriesBody.addEventListener('click', (e) => {
     if (e.target.classList.contains('delete-btn')) {
-      const idx = parseInt(e.target.getAttribute('data-index'));
+      const idx = parseInt(e.target.getAttribute('data-index'), 10);
       if (!isNaN(idx)) {
         entries.splice(idx, 1);
-        localStorage.setItem('entries', JSON.stringify(entries));
+        saveArray('entries', entries);
         updateUI();
       }
     }
   });
 
-  // UI update
+  function dateMatchesToday(dateValue) {
+    const parsed = parseDateOnlyLocal(dateValue) || new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.toLocaleDateString() === getToday().toLocaleDateString();
+  }
+
   function updateUI() {
-    // Summary calculations
     const todayStr = getToday().toLocaleDateString();
     let regMin = 0;
     let otMin = 0;
@@ -203,38 +264,30 @@
     let weekdayTotal = 0;
     let weekendTotal = 0;
     let commissionSum = 0;
-    // compute entries
+
     entries.forEach((entry) => {
       const entryDateStr = new Date(entry.date).toLocaleDateString();
       if (entryDateStr === todayStr) {
-        regMin += Math.min(entry.totalMinutes, DAILY_LIMIT_MIN);
-        otMin += entry.overtimeMinutes;
+        regMin += Math.min(Number(entry.totalMinutes) || 0, DAILY_LIMIT_MIN);
+        otMin += Number(entry.overtimeMinutes) || 0;
       }
     });
-    // compute callouts
+
     callouts.forEach((c) => {
-      const cDateStr = new Date(c.date).toLocaleDateString();
-      if (cDateStr === todayStr) {
-        calloutTodaySum += c.amount;
-      }
-      if (c.type === 'weekday') {
-        weekdayTotal += c.amount;
-      } else if (c.type === 'weekend') {
-        weekendTotal += c.amount;
-      }
+      if (dateMatchesToday(c.date)) calloutTodaySum += Number(c.amount) || 0;
+      if (c.type === 'weekday') weekdayTotal += Number(c.amount) || 0;
+      if (c.type === 'weekend') weekendTotal += Number(c.amount) || 0;
     });
-    // compute commissions
+
     commissions.forEach((c) => {
-      const cDateStr = new Date(c.date).toLocaleDateString();
-      commissionSum += c.amount;
-      if (cDateStr === todayStr) {
-        commissionTodaySum += c.amount;
-      }
+      commissionSum += Number(c.amount) || 0;
+      if (dateMatchesToday(c.date)) commissionTodaySum += Number(c.amount) || 0;
     });
+
     const regPayTotal = (regMin / 60) * HOURLY_RATE;
     const otPayTotal = (otMin / 60) * OT_RATE;
     const totalPay = regPayTotal + otPayTotal + calloutTodaySum + commissionTodaySum;
-    // update summary elements
+
     todayRegEl.textContent = formatTime(regMin);
     todayOTEl.textContent = formatTime(otMin);
     todayTotalHoursEl.textContent = formatTime(regMin + otMin);
@@ -242,56 +295,51 @@
     todayOTPayEl.textContent = formatCurrency(otPayTotal);
     todayCommissionEl.textContent = formatCurrency(commissionTodaySum);
     todayTotalPayEl.textContent = formatCurrency(totalPay);
-    // update call‑out/commission totals
     weekdayTotalEl.textContent = formatCurrency(weekdayTotal);
     weekendTotalEl.textContent = formatCurrency(weekendTotal);
     commissionTotalEl.textContent = formatCurrency(commissionSum);
     calloutCommissionTotalEl.textContent = formatCurrency(weekdayTotal + weekendTotal + commissionSum);
 
-    // Compute weekly totals (Monday start)
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const dayOfWeek = todayDate.getDay();
-    // days since Monday (0 for Monday, 6 for Sunday)
     const diffToMonday = (dayOfWeek + 6) % 7;
     const weekStart = new Date(todayDate);
     weekStart.setDate(todayDate.getDate() - diffToMonday);
-    // accumulate weekly data
+
     let weekRegMin = 0;
     let weekOTMin = 0;
     let weekCalloutSum = 0;
     let weekCommissionSum = 0;
+
     entries.forEach((entry) => {
       const entryDate = new Date(entry.date);
       const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
       if (entryDay >= weekStart && entryDay <= todayDate) {
-        weekRegMin += Math.min(entry.totalMinutes, DAILY_LIMIT_MIN);
-        weekOTMin += entry.overtimeMinutes;
+        weekRegMin += Math.min(Number(entry.totalMinutes) || 0, DAILY_LIMIT_MIN);
+        weekOTMin += Number(entry.overtimeMinutes) || 0;
       }
     });
     callouts.forEach((c) => {
-      const cDate = new Date(c.date);
-      const cDay = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
-      if (cDay >= weekStart && cDay <= todayDate) {
-        weekCalloutSum += c.amount;
-      }
+      const cDay = parseDateOnlyLocal(c.date);
+      if (cDay && cDay >= weekStart && cDay <= todayDate) weekCalloutSum += Number(c.amount) || 0;
     });
     commissions.forEach((c) => {
-      const cDate = new Date(c.date);
-      const cDay = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
-      if (cDay >= weekStart && cDay <= todayDate) {
-        weekCommissionSum += c.amount;
-      }
+      const cDay = parseDateOnlyLocal(c.date);
+      if (cDay && cDay >= weekStart && cDay <= todayDate) weekCommissionSum += Number(c.amount) || 0;
     });
+
     const weekRegPay = (weekRegMin / 60) * HOURLY_RATE;
     const weekOTPay = (weekOTMin / 60) * OT_RATE;
-    const weekTotalPay = weekRegPay + weekOTPay + weekCalloutSum + weekCommissionSum;
     weekHoursEl.textContent = formatTime(weekRegMin + weekOTMin);
-    weekPayEl.textContent = formatCurrency(weekTotalPay);
+    weekPayEl.textContent = formatCurrency(weekRegPay + weekOTPay + weekCalloutSum + weekCommissionSum);
 
-    // populate entries table
     entriesBody.innerHTML = '';
-    const displayEntries = entries.slice().reverse().slice(0, 5);
+    const displayEntries = entries.slice().reverse().slice(0, 10);
+    if (!displayEntries.length) {
+      entriesBody.innerHTML = '<tr><td colspan="10" class="empty-row">No entries yet.</td></tr>';
+      return;
+    }
     displayEntries.forEach((entry, displayIndex) => {
       const idx = entries.length - 1 - displayIndex;
       const tr = document.createElement('tr');
@@ -304,7 +352,7 @@
         formatCurrency(entry.hoursPay),
         formatCurrency(entry.calloutPay || 0),
         formatCurrency(entry.commission || 0),
-        formatCurrency(entry.totalPay || (entry.hoursPay + (entry.calloutPay||0) + (entry.commission||0)))
+        formatCurrency(entry.totalPay || (entry.hoursPay + (entry.calloutPay || 0) + (entry.commission || 0)))
       ];
       rowVals.forEach((val) => {
         const td = document.createElement('td');
@@ -322,17 +370,31 @@
     });
   }
 
-  // Default date values for forms
   function setDefaultDates() {
-    const tzOffsetMs = new Date().getTimezoneOffset() * 60000;
-    const todayIso = new Date(Date.now() - tzOffsetMs).toISOString().split('T')[0];
+    const todayIso = getTodayIsoDate();
     calloutDateEl.value = calloutDateEl.value || todayIso;
     commissionDateEl.value = commissionDateEl.value || todayIso;
   }
 
-  // Initialize
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(`./service-worker.js?v=${encodeURIComponent(APP_VERSION)}`)
+        .then((registration) => registration.update())
+        .catch(() => {});
+    });
+  }
+
+  window.addEventListener('focus', updateRunningDisplay);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updateRunningDisplay();
+  });
+
   updateLiveDate();
   updateCalloutDisplay();
   setDefaultDates();
+  registerServiceWorker();
   updateUI();
+  if (startTimestamp) startLiveTimer();
+  else updateRunningDisplay();
 })();
