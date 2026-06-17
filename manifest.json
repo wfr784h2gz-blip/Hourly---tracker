@@ -1,19 +1,16 @@
 {
-  "name": "ServiceNow Hourly Tracker",
-  "short_name": "HourlyTracker",
-  "description": "Track hours, overtime, call-outs, commissions, and weekly pay.",
-  "start_url": "./?v=20260617-4",
-  "scope": "./",
+  "name": "Hourly Tracker",
+  "short_name": "Hourly",
+  "description": "Time and pay tracking app with call‑outs, commissions and pay estimation.",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#04132a",
-  "theme_color": "#04132a",
-  "orientation": "portrait",
+  "background_color": "#0a0f14",
+  "theme_color": "#0a0f14",
   "icons": [
     {
       "src": "icon.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ]
 }
