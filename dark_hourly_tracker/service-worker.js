@@ -1,11 +1,12 @@
-const CACHE_NAME = 'hourly-tracker-dark-v3';
+const CACHE_NAME = 'hourly-tracker-dark-v4';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
-  '../icon.svg'
+  '../icon.svg',
+  'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
 self.addEventListener('install', event => {
