@@ -1,1 +1,587 @@
-(() => {\n  /**\n   * Hourly Tracker – completely rebuilt for better mobile support\n   *\n   * This script manages time tracking, call‑outs, commissions, pay settings,\n   * paycheck estimation, and summary calculations. Data is persisted in\n   * localStorage so the app can be used offline as a PWA.\n   */\n\n  // State arrays loaded from localStorage\n  let entries = JSON.parse(localStorage.getItem('entries')) || [];\n  let callouts = JSON.parse(localStorage.getItem('callouts')) || [];\n  let commissions = JSON.parse(localStorage.getItem('commissions')) || [];\n\n  // Validate persisted data: if schema changed, reset arrays to prevent NaN\n  function validateData() {\n    // Validate entries: should have regMinutes, otMinutes and pay\n    if (\n      Array.isArray(entries) &&\n      entries.some(\n        (e) =>\n          typeof e.regMinutes !== 'number' ||\n          typeof e.otMinutes !== 'number' ||\n          typeof e.pay !== 'number'\n      )\n    ) {\n      entries = [];\n      localStorage.setItem('entries', JSON.stringify(entries));\n    }\n    // Validate callouts: should have type and date\n    if (\n      Array.isArray(callouts) &&\n      callouts.some((c) => !c.type || !c.date)\n    ) {\n      callouts = [];\n      localStorage.setItem('callouts', JSON.stringify(callouts));\n    }\n    // Validate commissions: should have amount and date\n    if (\n      Array.isArray(commissions) &&\n      commissions.some((c) => typeof c.amount !== 'number' || !c.date)\n    ) {\n      commissions = [];\n      localStorage.setItem('commissions', JSON.stringify(commissions));\n    }\n  }\n\n  // Pay rate settings with defaults\n  let regularRate = parseFloat(localStorage.getItem('regularRate')) || 32;\n  let overtimeRate = parseFloat(localStorage.getItem('overtimeRate')) || 48;\n  let weekdayCalloutRate = parseFloat(localStorage.getItem('weekdayCalloutRate')) || 25;\n  let weekendCalloutRate = parseFloat(localStorage.getItem('weekendCalloutRate')) || 50;\n\n  // Current shift tracking\n  let currentShift = null; // { start: Date }\n  let timerInterval = null;\n\n  /* Helper functions */\n\n  // Format minutes as \"xh ym\"\n  function formatMinutes(mins) {\n    const hours = Math.floor(mins / 60);\n    const minutes = Math.floor(mins % 60);\n    return `${hours}h ${minutes}m`;\n  }\n\n  // Format currency\n  function formatCurrency(value) {\n    return `$${value.toFixed(2)}`;\n  }\n\n  // Update today's date and time\n  function updateTodayDate() {\n    const now = new Date();\n    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };\n    document.getElementById('todayDate').textContent = now.toLocaleDateString(undefined, options);\n  }\n\n  // Compute if a date is weekend\n  function isWeekend(d) {\n    const day = d.getDay();\n    return day === 0 || day === 6; // Sunday (0) or Saturday (6)\n  }\n\n  // Start shift handler\n  function startShift() {\n    if (currentShift) return;\n    currentShift = { start: new Date() };\n    document.getElementById('startTime').textContent = currentShift.start\n      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });\n    document.getElementById('startShiftBtn').disabled = true;\n    document.getElementById('stopShiftBtn').disabled = false;\n    updateRunningDisplay(0, 0);\n    timerInterval = setInterval(updateRunningTime, 1000);\n  }\n\n  // Stop shift handler\n  function stopShift() {\n    if (!currentShift) return;\n    clearInterval(timerInterval);\n    const end = new Date();\n    const diffMs = end - currentShift.start;\n    const totalMinutes = Math.floor(diffMs / 60000);\n    const regMinutes = Math.min(totalMinutes, 480); // up to 8 hours (480 mins)\n    const otMinutes = Math.max(totalMinutes - 480, 0);\n    // Compute pay\n    const regPay = (regMinutes / 60) * regularRate;\n    const otPay = (otMinutes / 60) * overtimeRate;\n    const pay = regPay + otPay;\n    // Store entry\n    const entry = {\n      date: currentShift.start.toISOString(),\n      start: currentShift.start.toISOString(),\n      end: end.toISOString(),\n      regMinutes,\n      otMinutes,\n      pay,\n    };\n    entries.push(entry);\n    localStorage.setItem('entries', JSON.stringify(entries));\n    currentShift = null;\n    document.getElementById('startShiftBtn').disabled = false;\n    document.getElementById('stopShiftBtn').disabled = true;\n    document.getElementById('startTime').textContent = '--:--';\n    updateRunningDisplay(0, 0);\n    updateUI();\n  }\n\n  // Update running timer display\n  function updateRunningTime() {\n    if (!currentShift) return;\n    const now = new Date();\n    const diffMs = now - currentShift.start;\n    const totalMinutes = Math.floor(diffMs / 60000);\n    const regMinutes = Math.min(totalMinutes, 480);\n    const otMinutes = Math.max(totalMinutes - 480, 0);\n    updateRunningDisplay(regMinutes, otMinutes);\n  }\n\n  function updateRunningDisplay(regMinutes, otMinutes) {\n    document.getElementById('runningTime').textContent = formatMinutes(regMinutes);\n    document.getElementById('runningOvertime').textContent = formatMinutes(otMinutes);\n  }\n\n  // Add call‑out\n  function addCallout() {\n    const type = document.getElementById('calloutType').value;\n    const dateVal = document.getElementById('calloutDate').value;\n    if (!dateVal) {\n      alert('Please select a date for the call‑out.');\n      return;\n    }\n    const date = new Date(dateVal);\n    const callout = {\n      date: date.toISOString(),\n      type,\n    };\n    callouts.push(callout);\n    localStorage.setItem('callouts', JSON.stringify(callouts));\n    updateUI();\n  }\n\n  // Add commission\n  function addCommission() {\n    const amountVal = parseFloat(document.getElementById('commissionAmount').value);\n    const dateVal = document.getElementById('commissionDate').value;\n    if (isNaN(amountVal) || amountVal <= 0) {\n      alert('Enter a valid commission amount.');\n      return;\n    }\n    if (!dateVal) {\n      alert('Select a date for the commission.');\n      return;\n    }\n    const commission = {\n      date: new Date(dateVal).toISOString(),\n      amount: amountVal,\n    };\n    commissions.push(commission);\n    localStorage.setItem('commissions', JSON.stringify(commissions));\n    document.getElementById('commissionAmount').value = '';\n    updateUI();\n  }\n\n  // Save pay rates\n  function saveRates() {\n    const reg = parseFloat(document.getElementById('rateRegular').value);\n    const ot = parseFloat(document.getElementById('rateOvertime').value);\n    const weekday = parseFloat(\n      document.getElementById('rateWeekdayCallout').value\n    );\n    const weekend = parseFloat(\n      document.getElementById('rateWeekendCallout').value\n    );\n    if (\n      [reg, ot, weekday, weekend].some(\n        (v) => isNaN(v) || v < 0\n      )\n    ) {\n      alert('Please enter valid pay rates.');\n      return;\n    }\n    regularRate = reg;\n    overtimeRate = ot;\n    weekdayCalloutRate = weekday;\n    weekendCalloutRate = weekend;\n    localStorage.setItem('regularRate', regularRate);\n    localStorage.setItem('overtimeRate', overtimeRate);\n    localStorage.setItem('weekdayCalloutRate', weekdayCalloutRate);\n    localStorage.setItem('weekendCalloutRate', weekendCalloutRate);\n    alert('Rates saved!');\n    updateUI();\n  }\n\n  // Estimate paycheck\n  function estimatePay() {\n    const regHours = parseFloat(document.getElementById('estRegHours').value) || 0;\n    const overHours = parseFloat(document.getElementById('estOverHours').value) || 0;\n    const weekdayCount = parseInt(\n      document.getElementById('estWeekdayCallouts').value\n    ) || 0;\n    const weekendCount = parseInt(\n      document.getElementById('estWeekendCallouts').value\n    ) || 0;\n    const commission = parseFloat(\n      document.getElementById('estCommission').value\n    ) || 0;\n    const frequencyMultiplier = parseFloat(\n      document.getElementById('estFrequency').value\n    );\n    const regPay = regHours * regularRate;\n    const otPay = overHours * overtimeRate;\n    const calloutPay =\n      weekdayCount * weekdayCalloutRate + weekendCount * weekendCalloutRate;\n    const gross = (regPay + otPay + calloutPay + commission) * frequencyMultiplier;\n    document.getElementById('estResult').textContent = formatCurrency(gross);\n  }\n\n  // Delete entry by index\n  function deleteEntry(index) {\n    entries.splice(index, 1);\n    localStorage.setItem('entries', JSON.stringify(entries));\n    updateUI();\n  }\n\n  // Update UI summary and table\n  function updateUI() {\n    // Today & week summary variables\n    const now = new Date();\n    const todayKey = now.toISOString().substring(0, 10);\n    // Determine Monday of current week\n    const weekStart = new Date(now);\n    const dayOfWeek = weekStart.getDay();\n    // Adjust to Monday (1) where Sunday is 0\n    const diffToMonday = (dayOfWeek + 6) % 7; // 0 (Mon) => 0, Tue -> 1 etc\n    weekStart.setHours(0, 0, 0, 0);\n    weekStart.setDate(weekStart.getDate() - diffToMonday);\n    const weekEnd = new Date(weekStart);\n    weekEnd.setDate(weekEnd.getDate() + 7);\n\n    // Accumulators\n    let todayReg = 0;\n    let todayOt = 0;\n    let todayRegPay = 0;\n    let todayOtPay = 0;\n    let todayCallPay = 0;\n    let todayCommissionPay = 0;\n\n    let weekMinutes = 0;\n    let weekPay = 0;\n\n    // Process entries for today and week\n    entries.forEach((entry) => {\n      const entryDate = entry.date.substring(0, 10);\n      const startDate = new Date(entry.start);\n      if (entryDate === todayKey) {\n        todayReg += entry.regMinutes;\n        todayOt += entry.otMinutes;\n        todayRegPay += (entry.regMinutes / 60) * regularRate;\n        todayOtPay += (entry.otMinutes / 60) * overtimeRate;\n      }\n      if (startDate >= weekStart && startDate < weekEnd) {\n        weekMinutes += entry.regMinutes + entry.otMinutes;\n        weekPay += entry.pay;\n      }\n    });\n\n    // Process call‑outs\n    callouts.forEach((co) => {\n      const dateKey = co.date.substring(0, 10);\n      const coDate = new Date(co.date);\n      const rate = co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;\n      if (dateKey === todayKey) todayCallPay += rate;\n      if (coDate >= weekStart && coDate < weekEnd) {\n        weekPay += rate;\n      }\n    });\n\n    // Process commissions\n    commissions.forEach((com) => {\n      const dateKey = com.date.substring(0, 10);\n      const comDate = new Date(com.date);\n      if (dateKey === todayKey) todayCommissionPay += com.amount;\n      if (comDate >= weekStart && comDate < weekEnd) weekPay += com.amount;\n    });\n\n    // Update today summary\n    const todayHours = todayReg + todayOt;\n    document.getElementById('todayHours').textContent = formatMinutes(todayReg);\n    document.getElementById('todayOvertime').textContent = formatMinutes(todayOt);\n    document.getElementById('todayTotalHours').textContent = formatMinutes(todayHours);\n    document.getElementById('todayRegPay').textContent = formatCurrency(todayRegPay);\n    document.getElementById('todayOverPay').textContent = formatCurrency(todayOtPay);\n    document.getElementById('todayCalloutPay').textContent = formatCurrency(todayCallPay);\n    document.getElementById('todayCommission').textContent = formatCurrency(todayCommissionPay);\n    const todayGross = todayRegPay + todayOtPay + todayCallPay + todayCommissionPay;\n    document.getElementById('todayGrossPay').textContent = formatCurrency(todayGross);\n\n    // Update weekly summary\n    document.getElementById('weekTotalHours').textContent = formatMinutes(\n      weekMinutes\n    );\n    document.getElementById('weekTotalPay').textContent = formatCurrency(weekPay);\n\n    // Update entries table\n    const tbody = document.querySelector('#entriesTable tbody');\n    tbody.innerHTML = '';\n    entries\n      .slice()\n      .reverse()\n      .forEach((entry, idx) => {\n        const tr = document.createElement('tr');\n        const entryDate = new Date(entry.start);\n        const endDate = new Date(entry.end);\n        const displayIndex = entries.length - 1 - idx;\n        tr.innerHTML = `\n          <td>${entryDate.toLocaleDateString()}</td>\n          <td>${entryDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>\n          <td>${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>\n          <td>${formatMinutes(entry.regMinutes)}</td>\n          <td>${formatMinutes(entry.otMinutes)}</td>\n          <td>${formatCurrency(entry.pay)}</td>\n          <td><button class=\"delete-btn\" data-index=\"${displayIndex}\">Delete</button></td>\n        `;\n        tbody.appendChild(tr);\n      });\n  }\n\n  // Event listeners\n  document.getElementById('startShiftBtn').addEventListener('click', startShift);\n  document.getElementById('stopShiftBtn').addEventListener('click', stopShift);\n  document.getElementById('addCalloutBtn').addEventListener('click', addCallout);\n  document.getElementById('addCommissionBtn').addEventListener('click', addCommission);\n  document.getElementById('saveRatesBtn').addEventListener('click', saveRates);\n  document.getElementById('estimateBtn').addEventListener('click', estimatePay);\n\n  // Delegated delete handler for dynamic buttons\n  document\n    .querySelector('#entriesTable tbody')\n    .addEventListener('click', (e) => {\n      if (e.target.classList.contains('delete-btn')) {\n        const index = parseInt(e.target.getAttribute('data-index'), 10);\n        deleteEntry(index);\n      }\n    });\n\n  // Initialize default dates\n  function initDates() {\n    const todayIso = new Date().toISOString().substring(0, 10);\n    document.getElementById('calloutDate').value = todayIso;\n    document.getElementById('commissionDate').value = todayIso;\n  }\n\n  // Initialize pay settings inputs\n  function initPaySettings() {\n    document.getElementById('rateRegular').value = regularRate;\n    document.getElementById('rateOvertime').value = overtimeRate;\n    document.getElementById('rateWeekdayCallout').value = weekdayCalloutRate;\n    document.getElementById('rateWeekendCallout').value = weekendCalloutRate;\n  }\n\n  // Initialize app\n  function init() {\n    // Clean up any stale data from previous versions\n    validateData();\n    updateTodayDate();\n    initDates();\n    initPaySettings();\n    updateUI();\n    // Update date header every minute\n    setInterval(updateTodayDate, 60000);\n  }\n\n  init();\n})();
+(() => {
+  /**
+   * Hourly Tracker – completely rebuilt for better mobile support
+   *
+   * This script manages time tracking, call‑outs, commissions, pay settings,
+   * paycheck estimation, and summary calculations. Data is persisted in
+   * localStorage so the app can be used offline as a PWA.
+   */
+
+  // State arrays loaded from localStorage
+  let entries = JSON.parse(localStorage.getItem('entries')) || [];
+  let callouts = JSON.parse(localStorage.getItem('callouts')) || [];
+  let commissions = JSON.parse(localStorage.getItem('commissions')) || [];
+
+  // Validate persisted data: if schema changed, reset arrays to prevent NaN
+  function validateData() {
+    // Validate entries: should have regMinutes, otMinutes and pay
+    if (
+      Array.isArray(entries) &&
+      entries.some(
+        (e) =>
+          typeof e.regMinutes !== 'number' ||
+          typeof e.otMinutes !== 'number' ||
+          typeof e.pay !== 'number'
+      )
+    ) {
+      entries = [];
+      localStorage.setItem('entries', JSON.stringify(entries));
+    }
+    // Validate callouts: should have type and date
+    if (
+      Array.isArray(callouts) &&
+      callouts.some((c) => !c.type || !c.date)
+    ) {
+      callouts = [];
+      localStorage.setItem('callouts', JSON.stringify(callouts));
+    }
+    // Validate commissions: should have amount and date
+    if (
+      Array.isArray(commissions) &&
+      commissions.some((c) => typeof c.amount !== 'number' || !c.date)
+    ) {
+      commissions = [];
+      localStorage.setItem('commissions', JSON.stringify(commissions));
+    }
+  }
+
+  // Pay rate settings with defaults
+  let regularRate = parseFloat(localStorage.getItem('regularRate')) || 32;
+  let overtimeRate = parseFloat(localStorage.getItem('overtimeRate')) || 48;
+  let weekdayCalloutRate = parseFloat(localStorage.getItem('weekdayCalloutRate')) || 25;
+  let weekendCalloutRate = parseFloat(localStorage.getItem('weekendCalloutRate')) || 50;
+
+  // Current shift tracking
+  let currentShift = null; // { start: Date }
+  let timerInterval = null;
+
+  /* Helper functions */
+
+  // Format minutes as "xh ym"
+  function formatMinutes(mins) {
+    const hours = Math.floor(mins / 60);
+    const minutes = Math.floor(mins % 60);
+    return `${hours}h ${minutes}m`;
+  }
+
+  // Format currency
+  function formatCurrency(value) {
+    return `$${value.toFixed(2)}`;
+  }
+
+  // Update today's date and time
+  function updateTodayDate() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('todayDate').textContent = now.toLocaleDateString(undefined, options);
+  }
+
+  // Compute if a date is weekend
+  function isWeekend(d) {
+    const day = d.getDay();
+    return day === 0 || day === 6; // Sunday (0) or Saturday (6)
+  }
+
+  // Start shift handler
+  function startShift() {
+    if (currentShift) return;
+    currentShift = { start: new Date() };
+    document.getElementById('startTime').textContent = currentShift.start
+      .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('startShiftBtn').disabled = true;
+    document.getElementById('stopShiftBtn').disabled = false;
+    updateRunningDisplay(0, 0);
+    timerInterval = setInterval(updateRunningTime, 1000);
+  }
+
+  // Stop shift handler
+  function stopShift() {
+    if (!currentShift) return;
+    clearInterval(timerInterval);
+    const end = new Date();
+    const diffMs = end - currentShift.start;
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const regMinutes = Math.min(totalMinutes, 480); // up to 8 hours (480 mins)
+    const otMinutes = Math.max(totalMinutes - 480, 0);
+    // Compute pay
+    const regPay = (regMinutes / 60) * regularRate;
+    const otPay = (otMinutes / 60) * overtimeRate;
+    const pay = regPay + otPay;
+    // Store entry
+    const entry = {
+      date: currentShift.start.toISOString(),
+      start: currentShift.start.toISOString(),
+      end: end.toISOString(),
+      regMinutes,
+      otMinutes,
+      pay,
+      // default category and notes for auto entries
+      category: '',
+      notes: '',
+    };
+    entries.push(entry);
+    localStorage.setItem('entries', JSON.stringify(entries));
+    currentShift = null;
+    document.getElementById('startShiftBtn').disabled = false;
+    document.getElementById('stopShiftBtn').disabled = true;
+    document.getElementById('startTime').textContent = '--:--';
+    updateRunningDisplay(0, 0);
+    updateUI();
+  }
+
+  // Update running timer display
+  function updateRunningTime() {
+    if (!currentShift) return;
+    const now = new Date();
+    const diffMs = now - currentShift.start;
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const regMinutes = Math.min(totalMinutes, 480);
+    const otMinutes = Math.max(totalMinutes - 480, 0);
+    updateRunningDisplay(regMinutes, otMinutes);
+  }
+
+  function updateRunningDisplay(regMinutes, otMinutes) {
+    document.getElementById('runningTime').textContent = formatMinutes(regMinutes);
+    document.getElementById('runningOvertime').textContent = formatMinutes(otMinutes);
+  }
+
+  // Add call‑out
+  function addCallout() {
+    const type = document.getElementById('calloutType').value;
+    const dateVal = document.getElementById('calloutDate').value;
+    if (!dateVal) {
+      alert('Please select a date for the call‑out.');
+      return;
+    }
+    const date = new Date(dateVal);
+    const callout = {
+      date: date.toISOString(),
+      type,
+    };
+    callouts.push(callout);
+    localStorage.setItem('callouts', JSON.stringify(callouts));
+    updateUI();
+  }
+
+  // Add commission
+  function addCommission() {
+    const amountVal = parseFloat(document.getElementById('commissionAmount').value);
+    const dateVal = document.getElementById('commissionDate').value;
+    if (isNaN(amountVal) || amountVal <= 0) {
+      alert('Enter a valid commission amount.');
+      return;
+    }
+    if (!dateVal) {
+      alert('Select a date for the commission.');
+      return;
+    }
+    const commission = {
+      date: new Date(dateVal).toISOString(),
+      amount: amountVal,
+    };
+    commissions.push(commission);
+    localStorage.setItem('commissions', JSON.stringify(commissions));
+    document.getElementById('commissionAmount').value = '';
+    updateUI();
+  }
+
+  // Save pay rates
+  function saveRates() {
+    const reg = parseFloat(document.getElementById('rateRegular').value);
+    const ot = parseFloat(document.getElementById('rateOvertime').value);
+    const weekday = parseFloat(
+      document.getElementById('rateWeekdayCallout').value
+    );
+    const weekend = parseFloat(
+      document.getElementById('rateWeekendCallout').value
+    );
+    if (
+      [reg, ot, weekday, weekend].some(
+        (v) => isNaN(v) || v < 0
+      )
+    ) {
+      alert('Please enter valid pay rates.');
+      return;
+    }
+    regularRate = reg;
+    overtimeRate = ot;
+    weekdayCalloutRate = weekday;
+    weekendCalloutRate = weekend;
+    localStorage.setItem('regularRate', regularRate);
+    localStorage.setItem('overtimeRate', overtimeRate);
+    localStorage.setItem('weekdayCalloutRate', weekdayCalloutRate);
+    localStorage.setItem('weekendCalloutRate', weekendCalloutRate);
+    alert('Rates saved!');
+    updateUI();
+  }
+
+  // Estimate paycheck
+  function estimatePay() {
+    const regHours = parseFloat(document.getElementById('estRegHours').value) || 0;
+    const overHours = parseFloat(document.getElementById('estOverHours').value) || 0;
+    const weekdayCount = parseInt(
+      document.getElementById('estWeekdayCallouts').value
+    ) || 0;
+    const weekendCount = parseInt(
+      document.getElementById('estWeekendCallouts').value
+    ) || 0;
+    const commission = parseFloat(
+      document.getElementById('estCommission').value
+    ) || 0;
+    const frequencyMultiplier = parseFloat(
+      document.getElementById('estFrequency').value
+    );
+    const regPay = regHours * regularRate;
+    const otPay = overHours * overtimeRate;
+    const calloutPay =
+      weekdayCount * weekdayCalloutRate + weekendCount * weekendCalloutRate;
+    const gross = (regPay + otPay + calloutPay + commission) * frequencyMultiplier;
+    document.getElementById('estResult').textContent = formatCurrency(gross);
+  }
+
+  // Delete entry by index
+  function deleteEntry(index) {
+    entries.splice(index, 1);
+    localStorage.setItem('entries', JSON.stringify(entries));
+    updateUI();
+  }
+
+  // Add a manual entry with custom times, call‑out, commission, category and notes
+  function addManualEntry() {
+    const dateVal = document.getElementById('manualDate').value;
+    const startVal = document.getElementById('manualStart').value;
+    const endVal = document.getElementById('manualEnd').value;
+    if (!dateVal || !startVal || !endVal) {
+      alert('Please enter a date, start time and end time for the manual entry.');
+      return;
+    }
+    // Construct full Date objects
+    const startDate = new Date(`${dateVal}T${startVal}`);
+    const endDate = new Date(`${dateVal}T${endVal}`);
+    if (isNaN(startDate) || isNaN(endDate) || endDate <= startDate) {
+      alert('End time must be after start time.');
+      return;
+    }
+    const totalMinutes = Math.floor((endDate - startDate) / 60000);
+    const regMinutes = Math.min(totalMinutes, 480);
+    const otMinutes = Math.max(totalMinutes - 480, 0);
+    const regPay = (regMinutes / 60) * regularRate;
+    const otPay = (otMinutes / 60) * overtimeRate;
+    const pay = regPay + otPay;
+    // Category and notes
+    const category = document.getElementById('manualCategory').value.trim();
+    const notes = document.getElementById('manualNotes').value.trim();
+    // Build and store entry
+    const entry = {
+      date: startDate.toISOString(),
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      regMinutes,
+      otMinutes,
+      pay,
+      category,
+      notes,
+    };
+    entries.push(entry);
+    localStorage.setItem('entries', JSON.stringify(entries));
+    // Optional call‑out
+    const calloutType = document.getElementById('manualCallout').value;
+    if (calloutType) {
+      const callout = {
+        date: startDate.toISOString(),
+        type: calloutType,
+      };
+      callouts.push(callout);
+      localStorage.setItem('callouts', JSON.stringify(callouts));
+    }
+    // Optional commission
+    const commissionVal = parseFloat(
+      document.getElementById('manualCommission').value
+    );
+    if (!isNaN(commissionVal) && commissionVal > 0) {
+      const commission = {
+        date: startDate.toISOString(),
+        amount: commissionVal,
+      };
+      commissions.push(commission);
+      localStorage.setItem('commissions', JSON.stringify(commissions));
+    }
+    // Reset form fields
+    const todayIso = new Date().toISOString().substring(0, 10);
+    document.getElementById('manualDate').value = todayIso;
+    document.getElementById('manualStart').value = '';
+    document.getElementById('manualEnd').value = '';
+    document.getElementById('manualCallout').value = '';
+    document.getElementById('manualCommission').value = '';
+    document.getElementById('manualCategory').value = '';
+    document.getElementById('manualNotes').value = '';
+    updateUI();
+  }
+
+  // Export entries and extras to CSV file
+  function exportCsv() {
+    // Prepare CSV header
+    let csv = 'Type,Date,Start,End,Reg Minutes,OT Minutes,Total Pay,Category,Notes\n';
+    // Add entries
+    entries.forEach((entry) => {
+      const date = new Date(entry.start);
+      const dateStr = date.toISOString().substring(0, 10);
+      const startTime = date.toTimeString().substring(0, 5);
+      const endTime = new Date(entry.end).toTimeString().substring(0, 5);
+      csv += `Entry,${dateStr},${startTime},${endTime},${entry.regMinutes},${entry.otMinutes},${entry.pay.toFixed(
+        2
+      )},${entry.category || ''},${entry.notes || ''}\n`;
+    });
+    // Add call‑outs
+    callouts.forEach((co) => {
+      const d = new Date(co.date);
+      const dateStr = d.toISOString().substring(0, 10);
+      csv += `Call‑Out,${dateStr},,,,,${
+        co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate
+      }.00,,\n`;
+    });
+    // Add commissions
+    commissions.forEach((com) => {
+      const d = new Date(com.date);
+      const dateStr = d.toISOString().substring(0, 10);
+      csv += `Commission,${dateStr},,,,,${com.amount.toFixed(2)},,\n`;
+    });
+    // Create blob and trigger download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'hourly_tracker_data.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // Compute custom summary for date range
+  function computeRangeSummary() {
+    const startVal = document.getElementById('rangeStart').value;
+    const endVal = document.getElementById('rangeEnd').value;
+    if (!startVal || !endVal) {
+      alert('Please select both start and end dates for the range.');
+      return;
+    }
+    const startDate = new Date(startVal);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(endVal);
+    endDate.setHours(23, 59, 59, 999);
+    if (endDate < startDate) {
+      alert('End date must be on or after start date.');
+      return;
+    }
+    let rangeReg = 0;
+    let rangeOt = 0;
+    let rangeRegPay = 0;
+    let rangeOtPay = 0;
+    let rangeCallPay = 0;
+    let rangeComPay = 0;
+    // Entries
+    entries.forEach((entry) => {
+      const entryStart = new Date(entry.start);
+      if (entryStart >= startDate && entryStart <= endDate) {
+        rangeReg += entry.regMinutes;
+        rangeOt += entry.otMinutes;
+        rangeRegPay += (entry.regMinutes / 60) * regularRate;
+        rangeOtPay += (entry.otMinutes / 60) * overtimeRate;
+      }
+    });
+    // Call‑outs
+    callouts.forEach((co) => {
+      const cDate = new Date(co.date);
+      if (cDate >= startDate && cDate <= endDate) {
+        rangeCallPay += co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
+      }
+    });
+    // Commissions
+    commissions.forEach((com) => {
+      const cd = new Date(com.date);
+      if (cd >= startDate && cd <= endDate) {
+        rangeComPay += com.amount;
+      }
+    });
+    const totalMinutes = rangeReg + rangeOt;
+    const rangePay = rangeRegPay + rangeOtPay;
+    const gross = rangePay + rangeCallPay + rangeComPay;
+    document.getElementById('rangeHours').textContent = formatMinutes(totalMinutes);
+    document.getElementById('rangePay').textContent = formatCurrency(rangePay);
+    document.getElementById('rangeCallout').textContent = formatCurrency(rangeCallPay);
+    document.getElementById('rangeCommission').textContent = formatCurrency(rangeComPay);
+    document.getElementById('rangeGross').textContent = formatCurrency(gross);
+  }
+
+  // Update UI summary and table
+  function updateUI() {
+    // Today & week summary variables
+    const now = new Date();
+    const todayKey = now.toISOString().substring(0, 10);
+    // Determine Monday of current week
+    const weekStart = new Date(now);
+    const dayOfWeek = weekStart.getDay();
+    // Adjust to Monday (1) where Sunday is 0
+    const diffToMonday = (dayOfWeek + 6) % 7; // 0 (Mon) => 0, Tue -> 1 etc
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - diffToMonday);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // Accumulators
+    let todayReg = 0;
+    let todayOt = 0;
+    let todayRegPay = 0;
+    let todayOtPay = 0;
+    let todayCallPay = 0;
+    let todayCommissionPay = 0;
+
+    let weekMinutes = 0;
+    let weekPay = 0;
+
+    // Process entries for today and week
+    entries.forEach((entry) => {
+      const entryDate = entry.date.substring(0, 10);
+      const startDate = new Date(entry.start);
+      if (entryDate === todayKey) {
+        todayReg += entry.regMinutes;
+        todayOt += entry.otMinutes;
+        todayRegPay += (entry.regMinutes / 60) * regularRate;
+        todayOtPay += (entry.otMinutes / 60) * overtimeRate;
+      }
+      if (startDate >= weekStart && startDate < weekEnd) {
+        weekMinutes += entry.regMinutes + entry.otMinutes;
+        weekPay += entry.pay;
+      }
+    });
+
+    // Process call‑outs
+    callouts.forEach((co) => {
+      const dateKey = co.date.substring(0, 10);
+      const coDate = new Date(co.date);
+      const rate = co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
+      if (dateKey === todayKey) todayCallPay += rate;
+      if (coDate >= weekStart && coDate < weekEnd) {
+        weekPay += rate;
+      }
+    });
+
+    // Process commissions
+    commissions.forEach((com) => {
+      const dateKey = com.date.substring(0, 10);
+      const comDate = new Date(com.date);
+      if (dateKey === todayKey) todayCommissionPay += com.amount;
+      if (comDate >= weekStart && comDate < weekEnd) weekPay += com.amount;
+    });
+
+    // Update today summary
+    const todayHours = todayReg + todayOt;
+    document.getElementById('todayHours').textContent = formatMinutes(todayReg);
+    document.getElementById('todayOvertime').textContent = formatMinutes(todayOt);
+    document.getElementById('todayTotalHours').textContent = formatMinutes(todayHours);
+    document.getElementById('todayRegPay').textContent = formatCurrency(todayRegPay);
+    document.getElementById('todayOverPay').textContent = formatCurrency(todayOtPay);
+    document.getElementById('todayCalloutPay').textContent = formatCurrency(todayCallPay);
+    document.getElementById('todayCommission').textContent = formatCurrency(todayCommissionPay);
+    const todayGross = todayRegPay + todayOtPay + todayCallPay + todayCommissionPay;
+    document.getElementById('todayGrossPay').textContent = formatCurrency(todayGross);
+
+    // Update weekly summary
+    document.getElementById('weekTotalHours').textContent = formatMinutes(
+      weekMinutes
+    );
+    document.getElementById('weekTotalPay').textContent = formatCurrency(weekPay);
+
+    // Update entries table
+    const tbody = document.querySelector('#entriesTable tbody');
+    tbody.innerHTML = '';
+    entries
+      .slice()
+      .reverse()
+      .forEach((entry, idx) => {
+        const tr = document.createElement('tr');
+        const entryDate = new Date(entry.start);
+        const endDate = new Date(entry.end);
+        const displayIndex = entries.length - 1 - idx;
+        tr.innerHTML = `
+          <td>${entryDate.toLocaleDateString()}</td>
+          <td>${entryDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+          <td>${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+          <td>${formatMinutes(entry.regMinutes)}</td>
+          <td>${formatMinutes(entry.otMinutes)}</td>
+          <td>${formatCurrency(entry.pay)}</td>
+          <td>${entry.category || ''}</td>
+          <td>${entry.notes || ''}</td>
+          <td><button class="delete-btn" data-index="${displayIndex}">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+  }
+
+  // Event listeners
+  document.getElementById('startShiftBtn').addEventListener('click', startShift);
+  document.getElementById('stopShiftBtn').addEventListener('click', stopShift);
+  document.getElementById('addCalloutBtn').addEventListener('click', addCallout);
+  document.getElementById('addCommissionBtn').addEventListener('click', addCommission);
+  document.getElementById('saveRatesBtn').addEventListener('click', saveRates);
+  document.getElementById('estimateBtn').addEventListener('click', estimatePay);
+
+  // Additional features event listeners
+  const manualBtn = document.getElementById('addManualEntryBtn');
+  if (manualBtn) {
+    manualBtn.addEventListener('click', addManualEntry);
+  }
+  const exportBtn = document.getElementById('exportCsvBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', exportCsv);
+  }
+  const rangeBtn = document.getElementById('computeRangeBtn');
+  if (rangeBtn) {
+    rangeBtn.addEventListener('click', computeRangeSummary);
+  }
+
+  // Delegated delete handler for dynamic buttons
+  document
+    .querySelector('#entriesTable tbody')
+    .addEventListener('click', (e) => {
+      if (e.target.classList.contains('delete-btn')) {
+        const index = parseInt(e.target.getAttribute('data-index'), 10);
+        deleteEntry(index);
+      }
+    });
+
+  // Initialize default dates
+  function initDates() {
+    const todayIso = new Date().toISOString().substring(0, 10);
+    document.getElementById('calloutDate').value = todayIso;
+    document.getElementById('commissionDate').value = todayIso;
+    // Initialize manual entry date if field exists
+    const manualDateInput = document.getElementById('manualDate');
+    if (manualDateInput) {
+      manualDateInput.value = todayIso;
+    }
+  }
+
+  // Initialize pay settings inputs
+  function initPaySettings() {
+    document.getElementById('rateRegular').value = regularRate;
+    document.getElementById('rateOvertime').value = overtimeRate;
+    document.getElementById('rateWeekdayCallout').value = weekdayCalloutRate;
+    document.getElementById('rateWeekendCallout').value = weekendCalloutRate;
+  }
+
+  // Initialize app
+  function init() {
+    // Clean up any stale data from previous versions
+    validateData();
+    updateTodayDate();
+    initDates();
+    initPaySettings();
+    updateUI();
+    // Update date header every minute
+    setInterval(updateTodayDate, 60000);
+  }
+
+  init();
+})();
