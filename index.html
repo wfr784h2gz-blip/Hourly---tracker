@@ -24,6 +24,22 @@
       <p id="todayDate" class="date"></p>
     </header>
     <main class="container">
+      <!-- Quick Start card -->
+      <section id="quickStart" class="card quick-card">
+        <h2>Quick Start</h2>
+        <div class="button-row">
+          <button id="quickStartBtn" type="button" class="primary-btn large-btn">
+            Start
+          </button>
+          <button id="quickStopBtn" type="button" class="danger-btn large-btn" disabled>
+            Stop
+          </button>
+        </div>
+        <ul class="summary-list">
+          <li><strong>Running Time:</strong> <span id="quickRunningTime">0h&nbsp;0m</span></li>
+          <li><strong>Gross Today:</strong> <span id="quickGrossPay">$0.00</span></li>
+        </ul>
+      </section>
       <!-- Time tracker card -->
       <section id="timeTracker" class="card">
         <h2>Time Tracker</h2>
@@ -131,6 +147,10 @@
         <button id="saveRatesBtn" type="button" class="primary-btn">
           Save Rates
         </button>
+        <div class="form-row">
+          <label for="idleToggle">Idle Detection:</label>
+          <input type="checkbox" id="idleToggle" />
+        </div>
       </section>
       <!-- Paycheck estimator card -->
       <section id="estimator" class="card">
@@ -231,6 +251,16 @@
           <li><strong>Call‑Out Pay:</strong> <span id="rangeCallout">$0.00</span></li>
           <li><strong>Commission:</strong> <span id="rangeCommission">$0.00</span></li>
           <li><strong>Gross Pay:</strong> <span id="rangeGross">$0.00</span></li>
+        </ul>
+      </section>
+
+      <!-- Insights card -->
+      <section id="insights" class="card">
+        <h2>Insights</h2>
+        <ul class="summary-list">
+          <li><strong>Avg Shift Length:</strong> <span id="avgShift">0h&nbsp;0m</span></li>
+          <li><strong>Avg Hours per Day (last 7d):</strong> <span id="avgHours">0h&nbsp;0m</span></li>
+          <li><strong>Top Category:</strong> <span id="topCategory">N/A</span></li>
         </ul>
       </section>
       <!-- Recent entries card -->
