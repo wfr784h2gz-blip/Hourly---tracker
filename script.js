@@ -68,7 +68,7 @@
   function formatMinutes(mins) {
     const hours = Math.floor(mins / 60);
     const minutes = Math.floor(mins % 60);
-    return `${hours}h\u00a0${minutes}m`;
+    return `${hours}h ${minutes}m`;
   }
 
   // Format currency
@@ -360,50 +360,60 @@
     URL.revokeObjectURL(url);
   }
 
-  // Compute custom range summary
+  // Compute custom summary for date range
   function computeRangeSummary() {
     const startVal = document.getElementById('rangeStart').value;
     const endVal = document.getElementById('rangeEnd').value;
     if (!startVal || !endVal) {
-      alert('Select start and end dates for the summary.');
+      alert('Please select both start and end dates for the range.');
       return;
     }
-    const startDate = new Date(`${startVal}T00:00:00`);
-    const endDate = new Date(`${endVal}T23:59:59`);
-    let rangeMinutes = 0;
-    let rangePay = 0;
-    let rangeCall = 0;
-    let rangeCom = 0;
-    // Process entries
+    const startDate = new Date(startVal);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(endVal);
+    endDate.setHours(23, 59, 59, 999);
+    if (endDate < startDate) {
+      alert('End date must be on or after start date.');
+      return;
+    }
+    let rangeReg = 0;
+    let rangeOt = 0;
+    let rangeRegPay = 0;
+    let rangeOtPay = 0;
+    let rangeCallPay = 0;
+    let rangeComPay = 0;
+    // Entries
     entries.forEach((entry) => {
-      const entryDate = new Date(entry.start);
-      if (entryDate >= startDate && entryDate <= endDate) {
-        const totalMin = typeof entry.totalMinutes === 'number' ? entry.totalMinutes : (entry.regMinutes + entry.otMinutes);
-        rangeMinutes += totalMin;
-        rangePay += entry.pay;
+      const entryStart = new Date(entry.start);
+      if (entryStart >= startDate && entryStart <= endDate) {
+        rangeReg += entry.regMinutes;
+        rangeOt += entry.otMinutes;
+        rangeRegPay += (entry.regMinutes / 60) * regularRate;
+        rangeOtPay += (entry.otMinutes / 60) * overtimeRate;
       }
     });
-    // Process callouts
+    // Call‑outs
     callouts.forEach((co) => {
-      const coDate = new Date(co.date);
-      if (coDate >= startDate && coDate <= endDate) {
-        rangeCall += co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
+      const cDate = new Date(co.date);
+      if (cDate >= startDate && cDate <= endDate) {
+        rangeCallPay += co.type === 'weekday' ? weekdayCalloutRate : weekendCalloutRate;
       }
     });
-    // Process commissions
+    // Commissions
     commissions.forEach((com) => {
-      const comDate = new Date(com.date);
-      if (comDate >= startDate && comDate <= endDate) {
-        rangeCom += com.amount;
+      const cd = new Date(com.date);
+      if (cd >= startDate && cd <= endDate) {
+        rangeComPay += com.amount;
       }
     });
-    // Update display
-    document.getElementById('rangeHours').textContent = formatMinutes(rangeMinutes);
+    const totalMinutes = rangeReg + rangeOt;
+    const rangePay = rangeRegPay + rangeOtPay;
+    const gross = rangePay + rangeCallPay + rangeComPay;
+    document.getElementById('rangeHours').textContent = formatMinutes(totalMinutes);
     document.getElementById('rangePay').textContent = formatCurrency(rangePay);
-    document.getElementById('rangeCallout').textContent = formatCurrency(rangeCall);
-    document.getElementById('rangeCommission').textContent = formatCurrency(rangeCom);
-    const rangeGross = rangePay + rangeCall + rangeCom;
-    document.getElementById('rangeGross').textContent = formatCurrency(rangeGross);
+    document.getElementById('rangeCallout').textContent = formatCurrency(rangeCallPay);
+    document.getElementById('rangeCommission').textContent = formatCurrency(rangeComPay);
+    document.getElementById('rangeGross').textContent = formatCurrency(gross);
   }
 
   // Delete entry by index
@@ -413,68 +423,87 @@
     updateUI();
   }
 
-  // Edit entry by index
+  // Edit entry by index: prefill manual entry form and remove the entry
   function editEntry(index) {
     const entry = entries[index];
     if (!entry) return;
-    const entryDate = new Date(entry.start);
-    // Prefill manual entry form
-    document.getElementById('manualDate').value = entryDate.toISOString().substring(0, 10);
-    document.getElementById('manualStart').value = entryDate
-      .toISOString()
-      .substring(11, 16);
-    document.getElementById('manualEnd').value = new Date(entry.end)
-      .toISOString()
-      .substring(11, 16);
-    document.getElementById('manualCallout').value = '';
-    document.getElementById('manualCommission').value = '';
-    document.getElementById('manualCategory').value = entry.category || '';
-    document.getElementById('manualNotes').value = entry.notes || '';
-    // Remove from array and update
+    // Prefill manual entry fields with existing entry data
+    const startDate = new Date(entry.start);
+    const endDate = new Date(entry.end);
+    const dateStr = startDate.toISOString().substring(0, 10);
+    const startTime = startDate.toTimeString().substring(0, 5);
+    const endTime = endDate.toTimeString().substring(0, 5);
+    const manualDate = document.getElementById('manualDate');
+    const manualStart = document.getElementById('manualStart');
+    const manualEnd = document.getElementById('manualEnd');
+    const manualCategory = document.getElementById('manualCategory');
+    const manualNotes = document.getElementById('manualNotes');
+    const manualCallout = document.getElementById('manualCallout');
+    const manualCommission = document.getElementById('manualCommission');
+    if (manualDate && manualStart && manualEnd) {
+      manualDate.value = dateStr;
+      manualStart.value = startTime;
+      manualEnd.value = endTime;
+      if (manualCategory) manualCategory.value = entry.category || '';
+      if (manualNotes) manualNotes.value = entry.notes || '';
+      // For editing, reset call‑out and commission fields
+      if (manualCallout) manualCallout.value = '';
+      if (manualCommission) manualCommission.value = '';
+    }
+    // Remove the entry and update storage
     entries.splice(index, 1);
     localStorage.setItem('entries', JSON.stringify(entries));
     updateUI();
-    // Scroll to manual entry form
+    // Scroll to manual entry card for convenience if exists
     const manualCard = document.getElementById('manualEntry');
-    if (manualCard) manualCard.scrollIntoView({ behavior: 'smooth' });
+    if (manualCard && manualCard.scrollIntoView) {
+      manualCard.scrollIntoView({ behavior: 'smooth' });
+    }
   }
 
-  // Summary calculations and UI update
+  // Update UI summary and table
   function updateUI() {
-    // Reset totals
+    // Today & week summary variables
+    const now = new Date();
+    const todayKey = now.toISOString().substring(0, 10);
+    // Determine Monday of current week
+    const weekStart = new Date(now);
+    const dayOfWeek = weekStart.getDay();
+    // Adjust to Monday (1) where Sunday is 0
+    const diffToMonday = (dayOfWeek + 6) % 7; // 0 (Mon) => 0, Tue -> 1 etc
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - diffToMonday);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    // Accumulators
     let todayReg = 0;
     let todayOt = 0;
     let todayRegPay = 0;
     let todayOtPay = 0;
     let todayCallPay = 0;
     let todayCommissionPay = 0;
+
     let weekMinutes = 0;
     let weekPay = 0;
-    const today = new Date();
-    const todayKey = today.toISOString().substring(0, 10);
-    const weekStart = new Date();
-    weekStart.setHours(0, 0, 0, 0);
-    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    // Process entries
+
+    // Process entries for today and week
     entries.forEach((entry) => {
-      const dateKey = entry.start.substring(0, 10);
-      const entryDate = new Date(entry.start);
-      const totalMins = typeof entry.totalMinutes === 'number' ? entry.totalMinutes : (entry.regMinutes + entry.otMinutes);
-      if (dateKey === todayKey) {
+      const entryDate = entry.date.substring(0, 10);
+      const startDate = new Date(entry.start);
+      if (entryDate === todayKey) {
         todayReg += entry.regMinutes;
         todayOt += entry.otMinutes;
-        const payRate = entry.pay;
         todayRegPay += (entry.regMinutes / 60) * regularRate;
         todayOtPay += (entry.otMinutes / 60) * overtimeRate;
       }
-      if (entryDate >= weekStart && entryDate < weekEnd) {
-        weekMinutes += totalMins;
+      if (startDate >= weekStart && startDate < weekEnd) {
+        weekMinutes += entry.regMinutes + entry.otMinutes;
         weekPay += entry.pay;
       }
     });
-    // Process callouts
+
+    // Process call‑outs
     callouts.forEach((co) => {
       const dateKey = co.date.substring(0, 10);
       const coDate = new Date(co.date);
@@ -484,6 +513,7 @@
         weekPay += rate;
       }
     });
+
     // Process commissions
     commissions.forEach((com) => {
       const dateKey = com.date.substring(0, 10);
@@ -491,6 +521,7 @@
       if (dateKey === todayKey) todayCommissionPay += com.amount;
       if (comDate >= weekStart && comDate < weekEnd) weekPay += com.amount;
     });
+
     // Update today summary
     const todayHours = todayReg + todayOt;
     document.getElementById('todayHours').textContent = formatMinutes(todayReg);
@@ -502,11 +533,13 @@
     document.getElementById('todayCommission').textContent = formatCurrency(todayCommissionPay);
     const todayGross = todayRegPay + todayOtPay + todayCallPay + todayCommissionPay;
     document.getElementById('todayGrossPay').textContent = formatCurrency(todayGross);
+
     // Update weekly summary
     document.getElementById('weekTotalHours').textContent = formatMinutes(
       weekMinutes
     );
     document.getElementById('weekTotalPay').textContent = formatCurrency(weekPay);
+
     // Update entries table
     const tbody = document.querySelector('#entriesTable tbody');
     tbody.innerHTML = '';
@@ -532,6 +565,7 @@
         `;
         tbody.appendChild(tr);
       });
+
     // Update quick summary if present
     if (document.getElementById('quickRunningTime')) {
       updateQuickSummary();
@@ -568,7 +602,7 @@
     rangeBtn.addEventListener('click', computeRangeSummary);
   }
 
-  // Delegated delete and edit handler for dynamic buttons
+  // Delegated delete handler for dynamic buttons
   document
     .querySelector('#entriesTable tbody')
     .addEventListener('click', (e) => {
@@ -667,6 +701,16 @@
     if (avgShiftElem) avgShiftElem.textContent = formatMinutes(avgShiftMins);
     if (avgHoursElem) avgHoursElem.textContent = formatMinutes(avgDayMinutes);
     if (topCatElem) topCatElem.textContent = topCategory;
+
+    // Update suggested category text for manual entry
+    const suggestedElem = document.getElementById('suggestedCategory');
+    if (suggestedElem) {
+      if (topCategory && topCategory !== 'N/A') {
+        suggestedElem.textContent = `Suggested: ${topCategory}`;
+      } else {
+        suggestedElem.textContent = '';
+      }
+    }
   }
 
   // Idle detection activity reset
@@ -715,9 +759,6 @@
     document.getElementById('rateOvertime').value = overtimeRate;
     document.getElementById('rateWeekdayCallout').value = weekdayCalloutRate;
     document.getElementById('rateWeekendCallout').value = weekendCalloutRate;
-    // Idle toggle
-    const idleElem = document.getElementById('idleToggle');
-    if (idleElem) idleElem.checked = idleDetectionEnabled;
   }
 
   // Initialize app
@@ -730,7 +771,12 @@
     updateUI();
     // Update date header every minute
     setInterval(updateTodayDate, 60000);
-    // Update quick start and insights on init
+
+    // Initialize idle toggle and quick start buttons
+    const idleToggleElem2 = document.getElementById('idleToggle');
+    if (idleToggleElem2) {
+      idleToggleElem2.checked = idleDetectionEnabled;
+    }
     if (typeof updateQuickButtons === 'function') {
       updateQuickButtons();
     }
@@ -739,6 +785,19 @@
     }
     if (typeof updateInsights === 'function') {
       updateInsights();
+    }
+
+    // Initialize quick view toggle
+    const quickToggleElem = document.getElementById('quickViewToggle');
+    if (quickToggleElem) {
+      const quickEnabled = JSON.parse(localStorage.getItem('quickViewEnabled')) || false;
+      quickToggleElem.checked = quickEnabled;
+      document.body.classList.toggle('quick-view', quickEnabled);
+      quickToggleElem.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        document.body.classList.toggle('quick-view', enabled);
+        localStorage.setItem('quickViewEnabled', enabled);
+      });
     }
   }
 
