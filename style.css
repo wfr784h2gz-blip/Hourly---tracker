@@ -1,1 +1,423 @@
-:root {\n  --bg: #0a192f;\n  --sidebar-bg: #041e42;\n  --card-bg: #0c2e52;\n  --header-bg: #071b34;\n  --primary-color: #007bff;\n  --green: #22c55e;\n  --red: #dc3545;\n  --yellow: #fbbf24;\n  --text-primary: #e6f1ff;\n  --text-secondary: #94a3b8;\n}\n\nbody {\n  margin: 0;\n  display: flex;\n  min-height: 100vh;\n  background-color: var(--bg);\n  color: var(--text-primary);\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n}\n\n.sidebar {\n  width: 240px;\n  background-color: var(--sidebar-bg);\n  display: flex;\n  flex-direction: column;\n  padding: 1rem;\n  color: var(--text-secondary);\n}\n.sidebar .brand h1 {\n  margin: 0;\n  font-size: 1.6rem;\n  color: var(--text-primary);\n}\n.sidebar .brand p {\n  margin: .4rem 0 1rem;\n  font-size: .85rem;\n  color: var(--text-secondary);\n}\n.sidebar nav ul {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n}\n.sidebar nav li {\n  padding: .5rem .75rem;\n  margin-bottom: .3rem;\n  border-radius: 6px;\n  cursor: pointer;\n  color: var(--text-secondary);\n  transition: background-color .2s, color .2s;\n}\n.sidebar nav li.active,\n.sidebar nav li:hover {\n  background-color: #0c3a6a;\n  color: var(--text-primary);\n}\n.sidebar .user-info {\n  margin-top: auto;\n  font-size: .85rem;\n  color: var(--text-secondary);\n}\n\n.main {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  overflow-y: auto;\n}\n.topbar {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  padding: 1rem;\n  background-color: var(--header-bg);\n  border-bottom: 1px solid #10325a;\n}\n.topbar .title h2 {\n  margin: 0;\n  font-size: 1.4rem;\n}\n.topbar .title .highlight {\n  color: var(--yellow);\n  font-weight: 800;\n}\n\n/* Title highlight for header */\n.title-highlight {\n  color: var(--yellow);\n  font-weight: 800;\n  margin: 0;\n}\n.topbar .title p {\n  margin: 0;\n  margin-top: .3rem;\n  font-size: .9rem;\n  color: var(--text-secondary);\n}\n.status-group {\n  display: flex;\n  align-items: center;\n  gap: .5rem;\n  font-size: .85rem;\n}\n.live-dot {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background-color: var(--green);\n}\n.live-label {\n  color: var(--green);\n  font-weight: 600;\n}\n#currentDate {\n  color: #e2e8f0;\n}\n#periodSelect {\n  background-color: var(--card-bg);\n  color: var(--text-primary);\n  border: 1px solid #2b426a;\n  border-radius: 6px;\n  padding: .3rem .5rem;\n}\n.cards {\n  padding: 1rem;\n  display: grid;\n  grid-template-columns: 2fr 1fr;\n  grid-template-rows: auto auto auto;\n  gap: 1rem;\n}\n.card {\n  background-color: var(--card-bg);\n  border-radius: 10px;\n  padding: 1rem;\n  color: var(--text-primary);\n  box-shadow: 0 2px 8px rgba(0,0,0,0.4);\n}\n.card h3 {\n  margin: 0 0 .5rem;\n  font-size: 1.2rem;\n  color: var(--text-primary);\n}\n.section-subtitle {\n  margin: 0;\n  color: var(--text-secondary);\n  font-size: .85rem;\n  margin-bottom: .6rem;\n}\n.time-inputs {\n  display: flex;\n  gap: 1rem;\n  margin-bottom: .7rem;\n}\n.time-field {\n  flex: 1;\n}\n.time-field label {\n  display: block;\n  font-size: .8rem;\n  color: var(--text-secondary);\n  margin-bottom: .2rem;\n}\n.time-field input {\n  width: 100%;\n  padding: .6rem;\n  border-radius: 6px;\n  border: 1px solid #2b426a;\n  background-color: var(--header-bg);\n  color: var(--text-primary);\n}\n.time-total {\n  margin: .8rem 0;\n  font-size: 2rem;\n  font-weight: 700;\n  text-align: center;\n}\n.time-total small {\n  display: block;\n  font-size: .9rem;\n  color: #f87171;\n  margin-top: .2rem;\n}\n.button-row {\n  display: flex;\n  gap: .7rem;\n}\n.button-row.single {\n  justify-content: flex-start;\n}\n.btn {\n  padding: .6rem 1rem;\n  border: none;\n  border-radius: 8px;\n  cursor: pointer;\n  font-weight: 600;\n  font-size: .9rem;\n}\n.btn.start {\n  background-color: var(--green);\n  color: #fff;\n}\n.btn.stop {\n  background-color: var(--red);\n  color: #fff;\n}\n.btn.primary {\n  background-color: var(--primary-color);\n  color: #fff;\n}\n.btn.secondary {\n  background-color: #475569;\n  color: var(--text-primary);\n}\n.btn:disabled {\n  opacity: .6;\n  cursor: not-allowed;\n}\n.summary-list {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n}\n.summary-list li {\n  display: flex;\n  justify-content: space-between;\n  padding: .4rem 0;\n  border-bottom: 1px solid #10325a;\n}\n.summary-list li:last-child {\n  border-bottom: none;\n}\n.summary-list li.total-row {\n  font-weight: 700;\n  color: var(--green);\n}\n.callout-card-grid {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 1rem;\n}\n.callout-form .field {\n  margin-bottom: .7rem;\n}\n.callout-pay-display {\n  background-color: var(--header-bg);\n  padding: .5rem;\n  border-radius: 8px;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  font-weight: 700;\n  color: var(--green);\n  margin-bottom: .7rem;\n}\n.callout-pay-display span {\n  color: var(--text-secondary);\n  font-size: .85rem;\n}\n.callout-summary .summary-box {\n  background-color: var(--header-bg);\n  padding: .5rem;\n  border-radius: 8px;\n  margin-bottom: .5rem;\n}\n.callout-summary .summary-box span {\n  display: block;\n  font-size: .8rem;\n  color: var(--text-secondary);\n}\n.callout-summary .summary-box strong {\n  font-size: 1.1rem;\n  color: var(--green);\n}\n.callout-summary .summary-box.total {\n  background-color: #0e334a;\n}\n.entries-card table {\n  width: 100%;\n  border-collapse: collapse;\n  font-size: .85rem;\n}\n.entries-card th, .entries-card td {\n  padding: .5rem;\n  text-align: left;\n  border-bottom: 1px solid #10325a;\n}\n.entries-card th {\n  background-color: var(--header-bg);\n  color: var(--text-primary);\n}\n.entries-card tbody tr:nth-child(odd) {\n  background-color: var(--header-bg);\n}\n.entries-card tbody tr:nth-child(even) {\n  background-color: var(--card-bg);\n}\n.view-all {\n  margin-top: .8rem;\n  text-align: center;\n}\n\n/* Responsive design for mobile screens */\n@media (max-width: 768px) {\n  .sidebar {\n    width: 100%;\n    flex-direction: row;\n    align-items: center;\n    justify-content: space-between;\n    padding: .5rem;\n    position: static;\n    overflow-x: auto;\n  }\n  .sidebar nav ul {\n    display: flex;\n    flex-direction: row;\n    gap: .5rem;\n  }\n  .sidebar nav li {\n    margin: 0 .3rem;\n    padding: .4rem .6rem;\n    font-size: .8rem;\n  }\n  .sidebar .brand, .sidebar .user-info {\n    display: none;\n  }\n  .cards {\n    display: flex;\n    flex-direction: column;\n    padding: .5rem;\n  }\n  .card {\n    width: 100%;\n    margin-bottom: 1rem;\n  }\n  .callout-card-grid {\n    grid-template-columns: 1fr;\n  }\n  .button-row {\n    flex-wrap: wrap;\n    gap: .5rem;\n  }\n  .btn {\n    width: 100%;\n    font-size: 1rem;\n  }\n  .time-total {\n    font-size: 1.5rem;\n  }\n  .summary-list li {\n    flex-direction: column;\n    align-items: flex-start;\n  }\n  .summary-list li span,\n  .summary-list li strong {\n    margin-bottom: .2rem;\n  }\n  .entries-card table {\n    font-size: .75rem;\n  }\n}\n\n/* Estimator card styles */\n.estimator-card .estimator-form .field {\n  margin-bottom: .7rem;\n}\n.estimator-card .estimator-result {\n  margin-top: .8rem;\n  background-color: var(--header-bg);\n  padding: .6rem;\n  border-radius: 8px;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  font-weight: 700;\n  color: var(--green);\n}\n.estimator-card .estimator-result span {\n  color: var(--text-secondary);\n  font-size: .9rem;\n}\n
+:root {
+  --bg: #0a192f;
+  --sidebar-bg: #041e42;
+  --card-bg: #0c2e52;
+  --header-bg: #071b34;
+  --primary-color: #007bff;
+  --green: #22c55e;
+  --red: #dc3545;
+  --yellow: #fbbf24;
+  --text-primary: #e6f1ff;
+  --text-secondary: #94a3b8;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.sidebar {
+  width: 240px;
+  background-color: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  color: var(--text-secondary);
+}
+.sidebar .brand h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--text-primary);
+}
+.sidebar .brand p {
+  margin: .4rem 0 1rem;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+.sidebar nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.sidebar nav li {
+  padding: .5rem .75rem;
+  margin-bottom: .3rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background-color .2s, color .2s;
+}
+.sidebar nav li.active,
+.sidebar nav li:hover {
+  background-color: #0c3a6a;
+  color: var(--text-primary);
+}
+.sidebar .user-info {
+  margin-top: auto;
+  font-size: .85rem;
+  color: var(--text-secondary);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid #10325a;
+}
+.topbar .title h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.topbar .title .highlight {
+  color: var(--yellow);
+  font-weight: 800;
+}
+
+/* Title highlight for header */
+.title-highlight {
+  /* Use the default primary text color for the heading; the highlighted portion will be styled via .service-name */
+  color: var(--text-primary);
+  font-weight: 800;
+  margin: 0;
+}
+
+/* Specific styling for the highlighted portion of the header (Service Now) */
+.service-name {
+  color: var(--yellow);
+  font-weight: 800;
+}
+.topbar .title p {
+  margin: 0;
+  margin-top: .3rem;
+  font-size: .9rem;
+  color: var(--text-secondary);
+}
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--green);
+}
+.live-label {
+  color: var(--green);
+  font-weight: 600;
+}
+#currentDate {
+  color: #e2e8f0;
+}
+#periodSelect {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border: 1px solid #2b426a;
+  border-radius: 6px;
+  padding: .3rem .5rem;
+}
+.cards {
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 1rem;
+}
+.card {
+  background-color: var(--card-bg);
+  border-radius: 10px;
+  padding: 1rem;
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.card h3 {
+  margin: 0 0 .5rem;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+.section-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .85rem;
+  margin-bottom: .6rem;
+}
+.time-inputs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: .7rem;
+}
+.time-field {
+  flex: 1;
+}
+.time-field label {
+  display: block;
+  font-size: .8rem;
+  color: var(--text-secondary);
+  margin-bottom: .2rem;
+}
+.time-field input {
+  width: 100%;
+  padding: .6rem;
+  border-radius: 6px;
+  border: 1px solid #2b426a;
+  background-color: var(--header-bg);
+  color: var(--text-primary);
+}
+.time-total {
+  margin: .8rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+}
+.time-total small {
+  display: block;
+  font-size: .9rem;
+  color: #f87171;
+  margin-top: .2rem;
+}
+.button-row {
+  display: flex;
+  gap: .7rem;
+}
+.button-row.single {
+  justify-content: flex-start;
+}
+.btn {
+  padding: .6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: .9rem;
+}
+.btn.start {
+  background-color: var(--green);
+  color: #fff;
+}
+.btn.stop {
+  background-color: var(--red);
+  color: #fff;
+}
+.btn.primary {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.btn.secondary {
+  background-color: #475569;
+  color: var(--text-primary);
+}
+.btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.summary-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: .4rem 0;
+  border-bottom: 1px solid #10325a;
+}
+.summary-list li:last-child {
+  border-bottom: none;
+}
+.summary-list li.total-row {
+  font-weight: 700;
+  color: var(--green);
+}
+.callout-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.callout-form .field {
+  margin-bottom: .7rem;
+}
+.callout-pay-display {
+  background-color: var(--header-bg);
+  padding: .5rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: .7rem;
+}
+.callout-pay-display span {
+  color: var(--text-secondary);
+  font-size: .85rem;
+}
+.callout-summary .summary-box {
+  background-color: var(--header-bg);
+  padding: .5rem;
+  border-radius: 8px;
+  margin-bottom: .5rem;
+}
+.callout-summary .summary-box span {
+  display: block;
+  font-size: .8rem;
+  color: var(--text-secondary);
+}
+.callout-summary .summary-box strong {
+  font-size: 1.1rem;
+  color: var(--green);
+}
+.callout-summary .summary-box.total {
+  background-color: #0e334a;
+}
+.entries-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .85rem;
+}
+.entries-card th, .entries-card td {
+  padding: .5rem;
+  text-align: left;
+  border-bottom: 1px solid #10325a;
+}
+.entries-card th {
+  background-color: var(--header-bg);
+  color: var(--text-primary);
+}
+.entries-card tbody tr:nth-child(odd) {
+  background-color: var(--header-bg);
+}
+.entries-card tbody tr:nth-child(even) {
+  background-color: var(--card-bg);
+}
+.view-all {
+  margin-top: .8rem;
+  text-align: center;
+}
+
+/* Responsive design for mobile screens */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: .5rem;
+    position: static;
+    overflow-x: auto;
+  }
+  .sidebar nav ul {
+    display: flex;
+    flex-direction: row;
+    gap: .5rem;
+  }
+  .sidebar nav li {
+    margin: 0 .3rem;
+    padding: .4rem .6rem;
+    font-size: .8rem;
+  }
+  .sidebar .brand, .sidebar .user-info {
+    display: none;
+  }
+  .cards {
+    display: flex;
+    flex-direction: column;
+    padding: .5rem;
+  }
+  .card {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  .callout-card-grid {
+    grid-template-columns: 1fr;
+  }
+  .button-row {
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .btn {
+    width: 100%;
+    font-size: 1rem;
+  }
+  .time-total {
+    font-size: 1.5rem;
+  }
+  .summary-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .summary-list li span,
+  .summary-list li strong {
+    margin-bottom: .2rem;
+  }
+  .entries-card table {
+    font-size: .75rem;
+  }
+}
+
+/* Estimator card styles */
+.estimator-card .estimator-form .field {
+  margin-bottom: .7rem;
+}
+.estimator-card .estimator-result {
+  margin-top: .8rem;
+  background-color: var(--header-bg);
+  padding: .6rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: var(--green);
+}
+.estimator-card .estimator-result span {
+  color: var(--text-secondary);
+  font-size: .9rem;
+}
+
+/* ===================================== */
+/* Custom additions for improved UX */
+
+/* Add spacing before icons in sidebar items */
+.sidebar nav li .icon {
+  margin-right: .5rem;
+}
+
+/* Style delete buttons in entries table for better visibility */
+.entries-card .delete-btn {
+  background-color: var(--red);
+  color: #fff;
+  border: none;
+  padding: .4rem .6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .8rem;
+}
+
+/* Ensure the last column in entries table does not wrap so buttons remain visible */
+.entries-card td:last-child {
+  white-space: nowrap;
+}
+
+/* Style the pay frequency select element inside the estimator card */
+.estimator-card select {
+  width: 100%;
+  padding: .6rem;
+  border-radius: 6px;
+  border: 1px solid #2b426a;
+  background-color: var(--header-bg);
+  color: var(--text-primary);
+}
