@@ -1,290 +1,268 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#04132a" />
-    <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css" />
-    <!-- Chart.js for reports -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>Hourly Tracker – Dark Theme</title>
-  </head>
-  <body>
-    <div class="container">
-      <!-- Sidebar -->
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="logo-circle">HT</div>
-          <div>
-            <h1>Hourly Tracker</h1>
-            <p class="tagline">Track your time, get paid.</p>
-          </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#04132a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Hourly Tracker" />
+  <link rel="manifest" href="manifest.json?v=20260617-3" />
+  <link rel="stylesheet" href="style.css?v=20260617-3" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="script.js?v=20260617-3" defer></script>
+  <title>ServiceNow Employees Time</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-circle">HT</div>
+        <div>
+          <h1>Hourly Tracker</h1>
+          <p>ServiceNow Employees Time</p>
         </div>
-        <nav class="nav">
-          <ul id="navList">
-            <li class="active" data-target="dashboardSection"><span class="icon">📊</span>Dashboard</li>
-            <li data-target="timeEntriesSection"><span class="icon">🕒</span>Time Entries</li>
-            <li data-target="calloutSection"><span class="icon">📞</span>Call‑Out Tracker</li>
-            <li data-target="reportsSection"><span class="icon">📄</span>Reports</li>
-            <li data-target="calendarSection"><span class="icon">📅</span>Calendar</li>
-            <li data-target="settingsSection"><span class="icon">⚙️</span>Settings</li>
-          </ul>
-        </nav>
-        <div class="user-footer">
-          <div class="avatar">U</div>
-          <div>
-            <p class="username">User</p>
-            <p class="rate">$32/hr Standard</p>
-          </div>
+      </div>
+      <nav class="nav" aria-label="App sections">
+        <button class="nav-item active" data-target="dashboardSection">📊 <span>Dashboard</span></button>
+        <button class="nav-item" data-target="timeEntriesSection">🕒 <span>Time Entries</span></button>
+        <button class="nav-item" data-target="calloutSection">📞 <span>Call-Out Tracker</span></button>
+        <button class="nav-item" data-target="reportsSection">📄 <span>Reports</span></button>
+        <button class="nav-item" data-target="paycheckSection">💵 <span>Paycheck Check</span></button>
+        <button class="nav-item" data-target="settingsSection">⚙️ <span>Settings</span></button>
+      </nav>
+      <div class="user-footer">
+        <div class="avatar">L</div>
+        <div>
+          <strong>Live App</strong>
+          <span id="rateBadge">$32/hr • OT $48/hr</span>
         </div>
-      </aside>
-      <!-- Main content -->
-      <main class="main">
-        <!-- Header -->
-        <header class="top-bar">
-          <div class="header-left">
-            <h2 id="mainTitle">Dashboard</h2>
-            <p id="mainSubtitle">Track your hours, overtime, call‑outs and commissions</p>
-          </div>
-          <div class="header-right">
-            <span class="status-indicator">● Live</span>
-            <span class="current-date" id="currentDate"></span>
-          </div>
-        </header>
+      </div>
+    </aside>
 
-        <!-- Dashboard section -->
-        <div id="dashboardSection" class="section active">
-          <!-- Grid layout for cards -->
-          <div class="grid">
-            <!-- Time tracker card -->
-            <section class="card tracker-card">
-              <h3>Time Tracker</h3>
-              <p class="subtitle">Track your work hours</p>
-              <div class="inputs">
-                <div class="time-group">
-                  <label for="startTime">
-                    <span class="circle green"></span>Start Time
-                  </label>
-                  <input type="time" id="startTime" />
-                </div>
-                <div class="time-group">
-                  <label for="endTime">
-                    <span class="circle red"></span>End Time
-                  </label>
-                  <input type="time" id="endTime" />
-                </div>
+    <main class="main">
+      <header class="top-bar">
+        <div>
+          <h2 id="mainTitle">Dashboard</h2>
+          <p id="mainSubtitle">Track hours, overtime, call-outs, commissions, and pay.</p>
+        </div>
+        <div class="status-wrap">
+          <span class="status-dot">● Live</span>
+          <span id="currentDate"></span>
+        </div>
+      </header>
+
+      <section id="dashboardSection" class="section active">
+        <div class="grid">
+          <article class="card tracker-card wide-mobile">
+            <div class="card-head">
+              <div>
+                <h3>Time Tracker</h3>
+                <p>Start it, close the app, reopen it, then stop or enter your out time.</p>
               </div>
-              <div class="results">
-                <div class="total">
-                  <span id="totalTime">0h 0m</span>
-                </div>
-                <div class="overtime">
-                  <span id="overtime">0h 0m overtime</span>
-                </div>
+              <span id="shiftStatus" class="pill idle">Ready</span>
+            </div>
+
+            <div class="inputs">
+              <label class="time-group">
+                <span><i class="circle green"></i> Start Time</span>
+                <input type="time" id="startTime" />
+              </label>
+              <label class="time-group">
+                <span><i class="circle red"></i> End / Out Time</span>
+                <input type="time" id="endTime" />
+              </label>
+            </div>
+
+            <div class="live-panel">
+              <div>
+                <span>Running Total</span>
+                <strong id="totalTime">0h 0m</strong>
               </div>
-              <div class="actions">
-                <button id="startBtn" class="btn green">Start</button>
-                <button id="stopBtn" class="btn red">Stop</button>
+              <div>
+                <span>Running Overtime</span>
+                <strong id="overtime">0h 0m</strong>
               </div>
-            </section>
-            <!-- Summary card -->
-            <section class="card summary-card">
-              <h3>Today's Summary</h3>
-              <ul class="summary-list">
-                <li>
-                  <span>Regular Hours (up to 8)</span>
-                  <span id="regularHours" class="value blue">0h 0m</span>
-                </li>
-                <li>
-                  <span>Overtime Hours</span>
-                  <span id="summaryOvertime" class="value orange">0h 0m</span>
-                </li>
-                <li>
-                  <span>Total Hours</span>
-                  <span id="summaryTotal" class="value purple">0h 0m</span>
-                </li>
-                <li>
-                  <span>Regular Pay</span>
-                  <span id="regularPay" class="value green-money">$0.00</span>
-                </li>
-                <li>
-                  <span>Overtime Pay</span>
-                  <span id="overtimePay" class="value orange-money">$0.00</span>
-                </li>
-                <li>
-                  <span>Commission</span>
-                  <span id="commissionPay" class="value blue-money">$0.00</span>
-                </li>
-                <li class="total-row">
-                  <span>Total Pay (Hours + Call‑Out + Commission)</span>
-                  <span id="totalPay" class="value total-money">$0.00</span>
-                </li>
-              </ul>
-            </section>
-            <!-- Call‑out tracker -->
-            <section class="card callout-card">
-              <h3>Call‑Out Tracker</h3>
-              <p class="subtitle">Track call‑out pay (separate from hours)</p>
-              <div class="callout-fields">
-                <div class="field">
-                  <label for="calloutType">Type</label>
-                  <select id="calloutType">
-                    <option value="weekday">Weekday</option>
-                    <option value="weekend">Weekend</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="calloutDate">Date</label>
-                  <input type="date" id="calloutDate" />
-                </div>
+              <div>
+                <span>Running Pay</span>
+                <strong id="runningPay">$0.00</strong>
               </div>
-              <div class="callout-display">
-                <span id="calloutPayAmount" class="callout-amount">$0.00</span>
-                <span id="calloutPayDesc" class="callout-desc">Weekday Call‑Out</span>
+            </div>
+
+            <div class="actions">
+              <button id="startBtn" class="btn green">Start</button>
+              <button id="stopBtn" class="btn red" disabled>Stop & Save</button>
+              <button id="saveManualBtn" class="btn blue">Save Manual Entry</button>
+              <button id="clearActiveBtn" class="btn ghost danger-text">Clear Running Shift</button>
+            </div>
+          </article>
+
+          <article class="card summary-card">
+            <h3>Today’s Summary</h3>
+            <ul class="summary-list">
+              <li><span>Regular Hours</span><strong id="regularHours">0h 0m</strong></li>
+              <li><span>Overtime Hours</span><strong id="summaryOvertime">0h 0m</strong></li>
+              <li><span>Total Hours</span><strong id="summaryTotal">0h 0m</strong></li>
+              <li><span>Regular Pay</span><strong id="regularPay">$0.00</strong></li>
+              <li><span>Overtime Pay</span><strong id="overtimePay">$0.00</strong></li>
+              <li><span>Call-Out Pay</span><strong id="todayCalloutPay">$0.00</strong></li>
+              <li><span>Commission</span><strong id="commissionPay">$0.00</strong></li>
+              <li class="total-row"><span>Total Pay Today</span><strong id="totalPay">$0.00</strong></li>
+            </ul>
+          </article>
+
+          <article class="card summary-card">
+            <h3>This Week</h3>
+            <ul class="summary-list">
+              <li><span>Weekly Regular</span><strong id="weekRegular">0h 0m</strong></li>
+              <li><span>Weekly Overtime</span><strong id="weekOvertime">0h 0m</strong></li>
+              <li><span>Weekly Hours</span><strong id="weekHours">0h 0m</strong></li>
+              <li><span>Weekly Call-Out</span><strong id="weekCalloutPay">$0.00</strong></li>
+              <li><span>Weekly Commission</span><strong id="weekCommissionPay">$0.00</strong></li>
+              <li class="total-row"><span>Weekly Pay</span><strong id="weekPay">$0.00</strong></li>
+            </ul>
+          </article>
+
+          <article class="card callout-card">
+            <h3>Call-Out Tracker</h3>
+            <p class="subtitle">Weekday = $25, Weekend = $50 by default.</p>
+            <div class="callout-fields">
+              <label class="field">Type
+                <select id="calloutType">
+                  <option value="weekday">Weekday</option>
+                  <option value="weekend">Weekend</option>
+                </select>
+              </label>
+              <label class="field">Date
+                <input type="date" id="calloutDate" />
+              </label>
+            </div>
+            <div class="callout-display">
+              <strong id="calloutPayAmount">$25.00</strong>
+              <span id="calloutPayDesc">Weekday Call-Out</span>
+            </div>
+            <button id="addCalloutBtn" class="btn blue">+ Add Call-Out</button>
+          </article>
+
+          <article class="card commission-card">
+            <h3>Add Commission</h3>
+            <p class="subtitle">Record extra commission money.</p>
+            <div class="commission-fields">
+              <label class="field">Amount ($)
+                <input type="number" id="commissionAmount" min="0" step="0.01" inputmode="decimal" />
+              </label>
+              <label class="field">Date
+                <input type="date" id="commissionDate" />
+              </label>
+            </div>
+            <button id="addCommissionBtn" class="btn purple">+ Add Commission</button>
+          </article>
+
+          <article class="card entries-card full-width">
+            <div class="card-head">
+              <div>
+                <h3>Recent Entries</h3>
+                <p>Newest saved work entries show here.</p>
               </div>
-              <button id="addCalloutBtn" class="btn blue">+ Add Call‑Out</button>
-            </section>
-            <!-- Commission card -->
-            <section class="card commission-card">
-              <h3>Add Commission</h3>
-              <p class="subtitle">Record additional commission earnings</p>
-              <div class="commission-fields">
-                <div class="field">
-                  <label for="commissionAmount">Amount ($)</label>
-                  <input type="number" id="commissionAmount" min="0" step="0.01" />
-                </div>
-                <div class="field">
-                  <label for="commissionDate">Date</label>
-                  <input type="date" id="commissionDate" />
-                </div>
-              </div>
-              <button id="addCommissionBtn" class="btn purple">+ Add Commission</button>
-            </section>
-            <!-- Call‑out summary -->
-            <section class="card callout-summary-card">
-              <ul class="summary-list">
-                <li>
-                  <span>Weekday Call‑Out</span>
-                  <span id="weekdayTotal" class="value">$0.00</span>
-                </li>
-                <li>
-                  <span>Weekend Call‑Out</span>
-                  <span id="weekendTotal" class="value">$0.00</span>
-                </li>
-                <li>
-                  <span>Commission Total</span>
-                  <span id="commissionTotal" class="value">$0.00</span>
-                </li>
-                <li class="total-row">
-                  <span>Total Call‑Out + Commission</span>
-                  <span id="totalCallout" class="value total-money">$0.00</span>
-                </li>
-              </ul>
-            </section>
-            <!-- Recent entries -->
-            <section class="card entries-card">
-              <h3>Recent Entries</h3>
+              <button id="viewAllBtn" class="btn ghost">View All Entries</button>
+            </div>
+            <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Total</th>
-                    <th>Overtime</th>
-                    <th>Hours Pay</th>
-                    <th>Call‑Out Pay</th>
-                    <th>Commission</th>
-                    <th>Total Pay</th>
+                    <th>Date</th><th>Start</th><th>End</th><th>Total</th><th>OT</th><th>Hours Pay</th><th>Total</th><th></th>
                   </tr>
                 </thead>
-                <tbody id="entriesBody">
-                  <!-- dynamically populated -->
-                </tbody>
+                <tbody id="entriesBody"></tbody>
               </table>
-              <button id="viewAllBtn" class="btn transparent">View All Entries</button>
-            </section>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="timeEntriesSection" class="section">
+        <article class="card full-width">
+          <div class="card-head">
+            <div>
+              <h3>All Time Entries</h3>
+              <p>Delete buttons are red and permanent.</p>
+            </div>
+            <button id="exportCsvBtn" class="btn blue">Export CSV</button>
           </div>
-        </div>
-        <!-- Time Entries section -->
-        <div id="timeEntriesSection" class="section" style="display:none;">
-          <h3>All Time Entries</h3>
-          <table class="full-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Total</th>
-                <th>Overtime</th>
-                <th>Hours Pay</th>
-                <th>Call‑Out Pay</th>
-                <th>Commission</th>
-                <th>Total Pay</th>
-              </tr>
-            </thead>
-            <tbody id="allEntriesBody">
-              <!-- full list populated by JS -->
-            </tbody>
-          </table>
-        </div>
-        <!-- Call‑Out Tracker section -->
-        <div id="calloutSection" class="section" style="display:none;">
-          <h3>Call‑Out & Commission Tracker</h3>
-          <!-- reuse callout and commission controls from dashboard -->
-          <div class="grid">
-            <section class="card callout-card clone" id="calloutCardClone">
-              <h3>Call‑Out</h3>
-              <p class="subtitle">Add call‑outs independent of hours</p>
-              <div class="callout-fields">
-                <div class="field">
-                  <label for="calloutTypeClone">Type</label>
-                  <select id="calloutTypeClone">
-                    <option value="weekday">Weekday</option>
-                    <option value="weekend">Weekend</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="calloutDateClone">Date</label>
-                  <input type="date" id="calloutDateClone" />
-                </div>
-              </div>
-              <div class="callout-display">
-                <span id="calloutPayAmountClone" class="callout-amount">$0.00</span>
-                <span id="calloutPayDescClone" class="callout-desc">Weekday Call‑Out</span>
-              </div>
-              <button id="addCalloutBtnClone" class="btn blue">+ Add Call‑Out</button>
-            </section>
-            <section class="card commission-card clone" id="commissionCardClone">
-              <h3>Commission</h3>
-              <p class="subtitle">Add separate commission</p>
-              <div class="commission-fields">
-                <div class="field">
-                  <label for="commissionAmountClone">Amount ($)</label>
-                  <input type="number" id="commissionAmountClone" min="0" step="0.01" />
-                </div>
-                <div class="field">
-                  <label for="commissionDateClone">Date</label>
-                  <input type="date" id="commissionDateClone" />
-                </div>
-              </div>
-              <button id="addCommissionBtnClone" class="btn purple">+ Add Commission</button>
-            </section>
-            <section class="card callout-summary-card">
-              <ul class="summary-list">
-                <li><span>Weekday Call‑Out</span><span id="weekdayTotal2" class="value">$0.00</span></li>
-                <li><span>Weekend Call‑Out</span><span id="weekendTotal2" class="value">$0.00</span></li>
-                <li><span>Commission Total</span><span id="commissionTotal2" class="value">$0.00</span></li>
-                <li class="total-row"><span>Total Call‑Out + Commission</span><span id="totalCallout2" class="value total-money">$0.00</span></li>
-              </ul>
-            </section>
+          <div class="table-wrap">
+            <table class="full-table">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Start</th><th>End</th><th>Total</th><th>Regular</th><th>OT</th><th>Hours Pay</th><th>Call-Out</th><th>Commission</th><th>Total</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="allEntriesBody"></tbody>
+            </table>
           </div>
+        </article>
+      </section>
+
+      <section id="calloutSection" class="section">
+        <div class="grid">
+          <article class="card callout-card">
+            <h3>Add Call-Out</h3>
+            <div class="callout-fields">
+              <label class="field">Type
+                <select id="calloutTypeClone">
+                  <option value="weekday">Weekday</option>
+                  <option value="weekend">Weekend</option>
+                </select>
+              </label>
+              <label class="field">Date
+                <input type="date" id="calloutDateClone" />
+              </label>
+            </div>
+            <div class="callout-display">
+              <strong id="calloutPayAmountClone">$25.00</strong>
+              <span id="calloutPayDescClone">Weekday Call-Out</span>
+            </div>
+            <button id="addCalloutBtnClone" class="btn blue">+ Add Call-Out</button>
+          </article>
+
+          <article class="card commission-card">
+            <h3>Add Commission</h3>
+            <div class="commission-fields">
+              <label class="field">Amount ($)
+                <input type="number" id="commissionAmountClone" min="0" step="0.01" inputmode="decimal" />
+              </label>
+              <label class="field">Date
+                <input type="date" id="commissionDateClone" />
+              </label>
+            </div>
+            <button id="addCommissionBtnClone" class="btn purple">+ Add Commission</button>
+          </article>
+
+          <article class="card summary-card">
+            <h3>Totals</h3>
+            <ul class="summary-list">
+              <li><span>Weekday Call-Out</span><strong id="weekdayTotal">$0.00</strong></li>
+              <li><span>Weekend Call-Out</span><strong id="weekendTotal">$0.00</strong></li>
+              <li><span>Commission Total</span><strong id="commissionTotal">$0.00</strong></li>
+              <li class="total-row"><span>Total Call-Out + Commission</span><strong id="totalCallout">$0.00</strong></li>
+            </ul>
+          </article>
+
+          <article class="card full-width">
+            <h3>Call-Outs & Commissions</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th></th></tr></thead>
+                <tbody id="extraBody"></tbody>
+              </table>
+            </div>
+          </article>
         </div>
-        <!-- Reports section -->
-        <div id="reportsSection" class="section" style="display:none;">
+      </section>
+
+      <section id="reportsSection" class="section">
+        <article class="card full-width">
           <h3>Reports & Analytics</h3>
-          <p>Select a date range to see your pay breakdown and totals.</p>
+          <p>Select a date range, then group totals by day, week, month, or year.</p>
           <div class="report-controls">
             <label>Start Date <input type="date" id="reportStartDate" /></label>
             <label>End Date <input type="date" id="reportEndDate" /></label>
@@ -298,43 +276,44 @@
             </label>
             <button id="generateReportBtn" class="btn blue">Generate Report</button>
           </div>
-          <canvas id="reportChart" height="150"></canvas>
-          <div id="reportSummary"></div>
-        </div>
-        <!-- Calendar section -->
-        <div id="calendarSection" class="section" style="display:none;">
-          <h3>Calendar</h3>
-          <p>This section will show your work and call‑out schedule. (Coming soon!)</p>
-        </div>
-        <!-- Settings section -->
-        <div id="settingsSection" class="section" style="display:none;">
-          <h3>Settings & Rates</h3>
-          <p>Customize your pay and call‑out rates.</p>
-          <div class="settings-fields">
-            <div class="field">
-              <label for="regularRate">Regular Hourly Rate ($)</label>
-              <input type="number" id="regularRate" min="0" step="0.01" />
-            </div>
-            <div class="field">
-              <label for="overtimeRate">Overtime Hourly Rate ($)</label>
-              <input type="number" id="overtimeRate" min="0" step="0.01" />
-            </div>
-            <div class="field">
-              <label for="weekdayCalloutRate">Weekday Call‑Out Rate ($)</label>
-              <input type="number" id="weekdayCalloutRate" min="0" step="0.01" />
-            </div>
-            <div class="field">
-              <label for="weekendCalloutRate">Weekend Call‑Out Rate ($)</label>
-              <input type="number" id="weekendCalloutRate" min="0" step="0.01" />
-            </div>
+          <canvas id="reportChart" height="140"></canvas>
+          <div id="reportSummary" class="report-summary"></div>
+        </article>
+      </section>
+
+      <section id="paycheckSection" class="section">
+        <article class="card paycheck-card">
+          <h3>Paycheck Check</h3>
+          <p>Enter what your check shows and compare it to the tracker total for the selected dates.</p>
+          <div class="report-controls">
+            <label>Start Date <input type="date" id="paycheckStartDate" /></label>
+            <label>End Date <input type="date" id="paycheckEndDate" /></label>
+            <label>Actual Check Amount ($) <input type="number" id="actualPaycheck" min="0" step="0.01" inputmode="decimal" /></label>
+            <button id="comparePaycheckBtn" class="btn green">Compare</button>
           </div>
-          <button id="saveSettingsBtn" class="btn green">Save Settings</button>
-        </div>
-        <footer class="footer-note">
-          Hourly Tracker • Your data is stored locally and stays private
-        </footer>
-      </main>
-    </div>
-    <script src="script.js"></script>
-  </body>
+          <div id="paycheckResult" class="compare-box">Tracker total will show here.</div>
+        </article>
+      </section>
+
+      <section id="settingsSection" class="section">
+        <article class="card settings-card">
+          <h3>Settings & Rates</h3>
+          <div class="settings-fields">
+            <label class="field">Regular Hourly Rate ($)<input type="number" id="regularRate" min="0" step="0.01" /></label>
+            <label class="field">Overtime Hourly Rate ($)<input type="number" id="overtimeRate" min="0" step="0.01" /></label>
+            <label class="field">Weekday Call-Out Rate ($)<input type="number" id="weekdayCalloutRate" min="0" step="0.01" /></label>
+            <label class="field">Weekend Call-Out Rate ($)<input type="number" id="weekendCalloutRate" min="0" step="0.01" /></label>
+            <label class="field">Overtime After Hours<input type="number" id="overtimeAfterHours" min="1" step="0.25" /></label>
+          </div>
+          <div class="actions">
+            <button id="saveSettingsBtn" class="btn green">Save Settings</button>
+            <button id="resetDemoBtn" class="btn ghost danger-text">Clear All Saved Data</button>
+          </div>
+        </article>
+      </section>
+
+      <footer class="footer-note">Hourly Tracker • Saves on this device and keeps the active shift running by saved start time.</footer>
+    </main>
+  </div>
+</body>
 </html>
